@@ -2,7 +2,7 @@
 
 A personal research product for studying how specific stocks reacted around news events and prior signals.
 
-The app lets you choose a ticker, inspect a professional OHLC price chart, overlay news markers, compare previous signals, and review post-news return windows such as 1 day, 3 days, 7 days, and 30 days. It uses realistic sample data and intentionally describes results as associated reactions rather than guaranteed causation.
+The app lets you choose a ticker, inspect a professional close-price line chart, overlay news markers, compare previous signals, and review post-news return windows such as 1 day, 3 days, 7 days, and 30 days. It uses realistic sample data and intentionally describes results as associated reactions rather than guaranteed causation.
 
 ## Run Locally
 
@@ -109,7 +109,7 @@ The API uses mock provider adapters by default, so the app runs without paid dat
 
 - Ticker dashboard for NVDA, AAPL, TSLA, and JPM.
 - Price and volume chart with clickable news event markers.
-- Professional OHLC candlestick chart with exact open, high, low, close, volume, range, moving average, active-window zooming, and news signal markers.
+- Professional close-price line chart with exact open, high, low, close, volume, range, active-window zooming, and news signal markers.
 - Event impact windows for 1D, 3D, 7D, and 30D returns.
 - Return-window controls resize the chart to the selected post-news reaction window and filter chart/timeline signals to that same period.
 - Sentiment, event type, surprise level, volume anomaly, and confidence signals.
@@ -161,7 +161,7 @@ Not yet implemented as true backend infrastructure:
 
 The sample dataset in `src/app.js` can later be replaced with:
 
-- Price candles from Polygon, Alpha Vantage, IEX Cloud, Tiingo, or Yahoo Finance-compatible exports.
+- Price history from Polygon, Alpha Vantage, IEX Cloud, Tiingo, or Yahoo Finance-compatible exports.
 - News from Benzinga, Finnhub, NewsAPI, GDELT, SEC filings, or company press releases.
 - AI summaries and classification from a backend service.
 

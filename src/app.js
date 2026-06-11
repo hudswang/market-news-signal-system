@@ -1400,16 +1400,15 @@ function drawChart(stock, events) {
   const priceHeight = Math.max(220, Math.round((cssHeight - pad.top - pad.bottom) * 0.76));
   const volumeTop = pad.top + priceHeight + 18;
   const volumeHeight = cssHeight - volumeTop - pad.bottom + 36;
-  const lows = points.map((point) => point.low);
-  const highs = points.map((point) => point.high);
-  const minPrice = Math.min(...lows) * 0.992;
-  const maxPrice = Math.max(...highs) * 1.008;
+  const closes = points.map((point) => point.close);
+  const minPrice = Math.min(...closes) * 0.992;
+  const maxPrice = Math.max(...closes) * 1.008;
   const maxVolume = Math.max(...points.map((point) => point.volume));
 
   const xFor = (index) => pad.left + (index / Math.max(1, points.length - 1)) * chartWidth;
   const yFor = (price) => pad.top + (1 - (price - minPrice) / (maxPrice - minPrice)) * priceHeight;
   const volumeY = volumeTop + volumeHeight;
-  const candleWidth = Math.max(2, Math.min(7, (chartWidth / points.length) * 0.62));
+  const pointWidth = Math.max(2, Math.min(6, (chartWidth / points.length) * 0.52));
 
   ctx.clearRect(0, 0, cssWidth, cssHeight);
   ctx.fillStyle = "#fbfcfe";
@@ -1440,38 +1439,49 @@ function drawChart(stock, events) {
     const x = xFor(index);
     const isUp = point.close >= point.open;
     const volumeHeightForPoint = (point.volume / maxVolume) * volumeHeight;
-    ctx.fillStyle = isUp ? "rgba(21, 128, 61, 0.22)" : "rgba(180, 35, 24, 0.22)";
-    ctx.fillRect(x - candleWidth / 2, volumeY - volumeHeightForPoint, candleWidth, volumeHeightForPoint);
-  });
-
-  points.forEach((point, index) => {
-    const x = xFor(index);
-    const isUp = point.close >= point.open;
-    const highY = yFor(point.high);
-    const lowY = yFor(point.low);
-    const openY = yFor(point.open);
-    const closeY = yFor(point.close);
-    const bodyTop = Math.min(openY, closeY);
-    const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
-    ctx.strokeStyle = isUp ? "#15803d" : "#b42318";
-    ctx.fillStyle = isUp ? "#15803d" : "#b42318";
-    ctx.beginPath();
-    ctx.moveTo(x, highY);
-    ctx.lineTo(x, lowY);
-    ctx.stroke();
-    ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+    ctx.fillStyle = isUp ? "rgba(21, 128, 61, 0.12)" : "rgba(180, 35, 24, 0.12)";
+    ctx.fillRect(x - pointWidth / 2, volumeY - volumeHeightForPoint, pointWidth, volumeHeightForPoint);
   });
 
   ctx.beginPath();
   points.forEach((point, index) => {
     const x = xFor(index);
-    const y = yFor(movingAverage(points, index, 20));
+    const y = yFor(point.close);
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.lineTo(xFor(points.length - 1), volumeTop - 6);
+  ctx.lineTo(xFor(0), volumeTop - 6);
+  ctx.closePath();
+  const areaGradient = ctx.createLinearGradient(0, pad.top, 0, volumeTop);
+  areaGradient.addColorStop(0, "rgba(37, 99, 235, 0.18)");
+  areaGradient.addColorStop(1, "rgba(37, 99, 235, 0.02)");
+  ctx.fillStyle = areaGradient;
+  ctx.fill();
+
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    const x = xFor(index);
+    const y = yFor(point.close);
     if (index === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
   ctx.strokeStyle = "#2563eb";
-  ctx.lineWidth = 1.8;
+  ctx.lineWidth = 2.4;
   ctx.stroke();
+
+  points.forEach((point, index) => {
+    if (points.length > 14 && index !== 0 && index !== points.length - 1 && index !== windowInfo.selectedIndex - windowInfo.startIndex) return;
+    const x = xFor(index);
+    const y = yFor(point.close);
+    ctx.beginPath();
+    ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = "#2563eb";
+    ctx.stroke();
+  });
 
   const tickEvery = Math.max(1, Math.ceil(points.length / 5));
   points.forEach((point, index) => {
@@ -1484,7 +1494,7 @@ function drawChart(stock, events) {
     const point = matchEventToPoint(points, event.date);
     const index = points.indexOf(point);
     const x = xFor(index);
-    const y = yFor(point.high);
+    const y = yFor(point.close);
     return { event, point, index, x, y };
   });
 
@@ -1527,9 +1537,9 @@ function drawChart(stock, events) {
 
   ctx.fillStyle = "#14213d";
   ctx.font = "700 12px Inter, system-ui, sans-serif";
-  ctx.fillText("MA20", pad.left + 6, pad.top + 14);
+  ctx.fillText("Close price", pad.left + 6, pad.top + 14);
   ctx.fillStyle = "#2563eb";
-  ctx.fillRect(pad.left + 43, pad.top + 7, 26, 3);
+  ctx.fillRect(pad.left + 78, pad.top + 7, 26, 3);
   ctx.fillStyle = "#64748b";
   ctx.fillText(`Volume max ${formatVolume(maxVolume)}`, pad.left + 6, volumeTop + 14);
 }
@@ -1727,7 +1737,7 @@ function showChartTooltip(event) {
     <div class="tooltip-signal">
       <span>${signal ? `${signal.type} signal` : "No news signal"}</span>
       <strong>${signal ? signal.headline : "Hover a marker for linked news"}</strong>
-      <small>${signal ? `${signal.source} - ${signal.sentiment} - ${state.selectedWindow.toUpperCase()} ${returnText}` : "This candle has price action but no matched article in the sample set."}</small>
+      <small>${signal ? `${signal.source} - ${signal.sentiment} - ${state.selectedWindow.toUpperCase()} ${returnText}` : "This price move has no matched article in the sample set."}</small>
     </div>
   `;
   els.chartTooltip.hidden = false;
