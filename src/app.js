@@ -236,13 +236,137 @@ const stocks = [
   }
 ];
 
+const newsSources = [
+  { name: "Earnings Call", category: "Company", reliability: 92, enabled: true },
+  { name: "Policy Wire", category: "Macro/Policy", reliability: 84, enabled: true },
+  { name: "Company Event", category: "Company", reliability: 88, enabled: true },
+  { name: "Analyst Desk", category: "Research", reliability: 76, enabled: true },
+  { name: "Regulatory Filing", category: "Regulatory", reliability: 90, enabled: true },
+  { name: "Macro Desk", category: "Macro", reliability: 82, enabled: true },
+  { name: "Legal Wire", category: "Legal", reliability: 73, enabled: true }
+];
+
+const watchlists = [
+  { id: "wl-ai", name: "AI Infrastructure", tickers: ["NVDA", "AAPL"] },
+  { id: "wl-vol", name: "High Beta Movers", tickers: ["TSLA", "NVDA"] },
+  { id: "wl-fin", name: "Banks And Macro", tickers: ["JPM"] }
+];
+
+const alertRules = [
+  { id: "alert-1", ticker: "NVDA", type: "High impact", threshold: 80, active: true },
+  { id: "alert-2", ticker: "TSLA", type: "Negative sentiment", threshold: 65, active: true },
+  { id: "alert-3", ticker: "JPM", type: "SEC filing", threshold: 70, active: false }
+];
+
+const economicEvents = [
+  {
+    name: "CPI Inflation",
+    country: "United States",
+    scheduledTime: "2026-06-12 08:30 ET",
+    importance: "High",
+    relatedAssets: ["SPY", "QQQ", "JPM"],
+    actual: "Pending",
+    forecast: "3.1%",
+    previous: "3.2%"
+  },
+  {
+    name: "Fed Decision",
+    country: "United States",
+    scheduledTime: "2026-06-17 14:00 ET",
+    importance: "High",
+    relatedAssets: ["SPY", "TLT", "JPM"],
+    actual: "Pending",
+    forecast: "Hold",
+    previous: "Hold"
+  },
+  {
+    name: "Jobs Report",
+    country: "United States",
+    scheduledTime: "2026-07-03 08:30 ET",
+    importance: "High",
+    relatedAssets: ["SPY", "QQQ", "TSLA"],
+    actual: "Pending",
+    forecast: "185K",
+    previous: "172K"
+  },
+  {
+    name: "NVIDIA Earnings Date",
+    country: "United States",
+    scheduledTime: "2026-08-26 16:05 ET",
+    importance: "High",
+    relatedAssets: ["NVDA", "QQQ", "SOXX"],
+    actual: "Pending",
+    forecast: "$6.22 EPS",
+    previous: "$5.98 EPS"
+  }
+];
+
+const filings = [
+  {
+    type: "10-Q",
+    company: "NVIDIA Corp.",
+    ticker: "NVDA",
+    filedDate: "2026-05-29",
+    url: "https://www.sec.gov/",
+    summary: "Quarterly filing with revenue concentration, supply-chain capacity, and customer demand risk notes."
+  },
+  {
+    type: "8-K",
+    company: "Apple Inc.",
+    ticker: "AAPL",
+    filedDate: "2026-06-03",
+    url: "https://www.sec.gov/",
+    summary: "Current report covering executive compensation and services-segment disclosure updates."
+  },
+  {
+    type: "8-K",
+    company: "Tesla Inc.",
+    ticker: "TSLA",
+    filedDate: "2026-06-05",
+    url: "https://www.sec.gov/",
+    summary: "Current report related to delivery update commentary and risk factor language."
+  },
+  {
+    type: "10-Q",
+    company: "JPMorgan Chase & Co.",
+    ticker: "JPM",
+    filedDate: "2026-05-08",
+    url: "https://www.sec.gov/",
+    summary: "Quarterly filing with credit quality, capital ratio, net interest income, and market risk updates."
+  }
+];
+
+const coverage = [
+  { label: "User authentication", status: "missing", note: "Not in the static MVP. Needs JWT backend, protected routes, and profile endpoint." },
+  { label: "Market news feed", status: "done", note: "Implemented as a searchable/filterable mock feed with article cards, summaries, sentiment, categories, sources, and impact." },
+  { label: "Watchlists", status: "done", note: "Implemented multiple mock watchlists with add/remove ticker controls and watchlist news filtering." },
+  { label: "Alerts", status: "done", note: "Implemented mock alert rules and rule evaluation against article impact/sentiment/filing-style events." },
+  { label: "AI summaries", status: "done", note: "Implemented mock bullet summaries, why-it-matters, and possible-impact fields." },
+  { label: "Sentiment analysis", status: "done", note: "Implemented mock sentiment label and -1 to 1 score per article." },
+  { label: "Dashboard", status: "done", note: "Implemented trending tickers, breaking news, market sentiment, news volume, watchlist news, and the original reaction chart." },
+  { label: "Economic calendar", status: "done", note: "Implemented CPI, jobs, Fed, GDP-style, and earnings events using mock data." },
+  { label: "SEC filings", status: "done", note: "Implemented mock filing list by ticker with type, company, date, URL, and summary." },
+  { label: "Admin/source management", status: "done", note: "Implemented source reliability/category/enabled display." },
+  { label: "REST API", status: "partial", note: "Documented in UI only. A real Express API is not created yet." },
+  { label: "Database schema", status: "partial", note: "Models are represented by frontend mock data. Prisma/PostgreSQL is not created yet." },
+  { label: "Background jobs", status: "partial", note: "Mock producer/evaluator behavior exists in the frontend. BullMQ/Redis jobs are not created yet." },
+  { label: "TypeScript monorepo", status: "missing", note: "Current implementation is a static zero-dependency app. React/Express/Prisma scaffold can be added next." }
+];
+
 const state = {
   selectedSymbol: "NVDA",
   selectedEventId: "nvda-earnings-beat",
   selectedWindow: "1d",
   filterType: "All",
   bullishOnly: false,
-  points: []
+  points: [],
+  activePage: "dashboard",
+  globalSearch: "",
+  newsTicker: "All",
+  newsSentiment: "All",
+  newsCategory: "All",
+  newsSource: "All",
+  selectedWatchlistId: "wl-ai"
 };
 
 const els = {
@@ -275,7 +399,39 @@ const els = {
   eventList: document.querySelector("#eventList"),
   similarPatternLabel: document.querySelector("#similarPatternLabel"),
   similarEvents: document.querySelector("#similarEvents"),
-  exportButton: document.querySelector("#exportButton")
+  exportButton: document.querySelector("#exportButton"),
+  globalSearch: document.querySelector("#globalSearch"),
+  navButtons: document.querySelectorAll(".nav-button"),
+  pageViews: document.querySelectorAll(".page-view"),
+  trendingTickers: document.querySelector("#trendingTickers"),
+  sentimentOverview: document.querySelector("#sentimentOverview"),
+  breakingNews: document.querySelector("#breakingNews"),
+  watchlistNewsLabel: document.querySelector("#watchlistNewsLabel"),
+  watchlistNews: document.querySelector("#watchlistNews"),
+  newsTickerFilter: document.querySelector("#newsTickerFilter"),
+  newsSentimentFilter: document.querySelector("#newsSentimentFilter"),
+  newsCategoryFilter: document.querySelector("#newsCategoryFilter"),
+  newsSourceFilter: document.querySelector("#newsSourceFilter"),
+  newsFeed: document.querySelector("#newsFeed"),
+  paginationInfo: document.querySelector("#paginationInfo"),
+  watchlistList: document.querySelector("#watchlistList"),
+  watchlistNameInput: document.querySelector("#watchlistNameInput"),
+  createWatchlistButton: document.querySelector("#createWatchlistButton"),
+  activeWatchlistTitle: document.querySelector("#activeWatchlistTitle"),
+  activeWatchlistMeta: document.querySelector("#activeWatchlistMeta"),
+  watchlistTickerSelect: document.querySelector("#watchlistTickerSelect"),
+  addTickerButton: document.querySelector("#addTickerButton"),
+  watchlistTickerChips: document.querySelector("#watchlistTickerChips"),
+  watchlistMatchedNews: document.querySelector("#watchlistMatchedNews"),
+  alertForm: document.querySelector("#alertForm"),
+  alertTicker: document.querySelector("#alertTicker"),
+  alertType: document.querySelector("#alertType"),
+  alertThreshold: document.querySelector("#alertThreshold"),
+  alertRules: document.querySelector("#alertRules"),
+  calendarList: document.querySelector("#calendarList"),
+  filingsList: document.querySelector("#filingsList"),
+  sourceList: document.querySelector("#sourceList"),
+  coverageList: document.querySelector("#coverageList")
 };
 
 function getStock() {
@@ -307,6 +463,335 @@ function sentimentClass(value) {
 
 function dateLabel(value) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`));
+}
+
+function getAllArticles() {
+  return stocks
+    .flatMap((stock) =>
+      stock.events.map((event, index) => ({
+        id: `article-${event.id}`,
+        title: event.headline,
+        source: event.source,
+        url: "https://example.com/mock-market-news",
+        publishedTime: `${event.date} ${index % 2 === 0 ? "08:30" : "16:05"} ET`,
+        tickers: [stock.symbol],
+        company: stock.name,
+        sector: stock.sector,
+        summary: event.summary,
+        sentimentLabel: event.sentiment,
+        sentimentScore: event.sentiment === "Positive" ? Math.min(0.95, event.confidence / 100) : event.sentiment === "Negative" ? -Math.min(0.95, event.confidence / 100) : 0,
+        category: event.type,
+        impactLevel: event.confidence >= 80 || event.volumeAnomaly >= 2.2 ? "High" : event.confidence >= 65 ? "Medium" : "Low",
+        whyItMatters: `This matters because ${stock.symbol} is currently trading around ${stock.regime.toLowerCase()}.`,
+        possibleImpact: `Associated ${state.selectedWindow.toUpperCase()} reaction in the sample: ${percent(event.returns[state.selectedWindow])}. Treat this as correlation research, not causation.`,
+        bullets: [
+          event.summary,
+          `Sentiment analyzer classified this as ${event.sentiment.toLowerCase()} with a score of ${event.sentiment === "Positive" ? "+" : ""}${(event.sentiment === "Negative" ? -event.confidence / 100 : event.confidence / 100).toFixed(2)}.`,
+          `Impact level is ${event.confidence >= 80 || event.volumeAnomaly >= 2.2 ? "high" : event.confidence >= 65 ? "medium" : "low"} based on confidence and ${event.volumeAnomaly.toFixed(1)}x news-volume anomaly.`
+        ],
+        returns: event.returns,
+        confidence: event.confidence,
+        volumeAnomaly: event.volumeAnomaly
+      }))
+    )
+    .sort((a, b) => new Date(b.publishedTime.slice(0, 10)) - new Date(a.publishedTime.slice(0, 10)));
+}
+
+function activeWatchlist() {
+  return watchlists.find((watchlist) => watchlist.id === state.selectedWatchlistId) || watchlists[0];
+}
+
+function articleMatchesQuery(article) {
+  const query = state.globalSearch.trim().toLowerCase();
+  if (!query) return true;
+  return [article.title, article.source, article.summary, article.category, article.sector, article.tickers.join(" ")]
+    .join(" ")
+    .toLowerCase()
+    .includes(query);
+}
+
+function getFilteredArticles() {
+  return getAllArticles().filter((article) => {
+    const tickerMatch = state.newsTicker === "All" || article.tickers.includes(state.newsTicker);
+    const sentimentMatch = state.newsSentiment === "All" || article.sentimentLabel === state.newsSentiment;
+    const categoryMatch = state.newsCategory === "All" || article.category === state.newsCategory;
+    const sourceMatch = state.newsSource === "All" || article.source === state.newsSource;
+    return articleMatchesQuery(article) && tickerMatch && sentimentMatch && categoryMatch && sourceMatch;
+  });
+}
+
+function impactClass(impact) {
+  if (impact === "High") return "Negative";
+  if (impact === "Medium") return "Neutral";
+  return "Positive";
+}
+
+function renderOptions(select, values, current, prefix) {
+  select.innerHTML = "";
+  const all = document.createElement("option");
+  all.value = "All";
+  all.textContent = prefix;
+  select.appendChild(all);
+  values.forEach((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  });
+  select.value = current;
+}
+
+function renderProductNavigation() {
+  els.navButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.page === state.activePage);
+  });
+  els.pageViews.forEach((view) => {
+    view.classList.toggle("is-active", view.dataset.pagePanel === state.activePage);
+  });
+}
+
+function renderDashboardSystem() {
+  const articles = getAllArticles();
+  const trendCounts = stocks
+    .map((stock) => {
+      const stockArticles = articles.filter((article) => article.tickers.includes(stock.symbol));
+      const score = stockArticles.reduce((sum, article) => sum + article.confidence + article.volumeAnomaly * 10, 0);
+      return { stock, count: stockArticles.length, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  els.trendingTickers.innerHTML = "";
+  trendCounts.forEach(({ stock, count, score }) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "ticker-chip";
+    chip.textContent = `${stock.symbol} ${count} news / ${Math.round(score)} score`;
+    chip.addEventListener("click", () => {
+      state.selectedSymbol = stock.symbol;
+      state.selectedEventId = stock.events[0].id;
+      render();
+    });
+    els.trendingTickers.appendChild(chip);
+  });
+
+  const sentimentTotals = ["Positive", "Neutral", "Negative"].map((label) => ({
+    label,
+    count: articles.filter((article) => article.sentimentLabel === label).length
+  }));
+  const total = Math.max(1, articles.length);
+  els.sentimentOverview.innerHTML = "";
+  sentimentTotals.forEach((item) => {
+    const row = document.createElement("div");
+    row.className = "sentiment-bar";
+    row.innerHTML = `
+      <span>${item.label}</span>
+      <span class="bar-track"><span class="bar-fill ${item.label}" style="width:${(item.count / total) * 100}%"></span></span>
+      <span>${item.count}</span>
+    `;
+    els.sentimentOverview.appendChild(row);
+  });
+
+  renderMiniList(els.breakingNews, articles.slice(0, 4));
+  const watchlist = activeWatchlist();
+  const watched = articles.filter((article) => article.tickers.some((ticker) => watchlist.tickers.includes(ticker))).slice(0, 4);
+  els.watchlistNewsLabel.textContent = `${watchlist.name} news only`;
+  renderMiniList(els.watchlistNews, watched);
+}
+
+function renderMiniList(container, articles) {
+  container.innerHTML = "";
+  if (!articles.length) {
+    const empty = document.createElement("div");
+    empty.className = "mini-item";
+    empty.innerHTML = "<strong>No matching news</strong><span>Adjust filters or watchlist tickers.</span>";
+    container.appendChild(empty);
+    return;
+  }
+  articles.forEach((article) => {
+    const item = document.createElement("article");
+    item.className = "mini-item";
+    item.innerHTML = `
+      <strong>${article.tickers.join(", ")} - ${article.title}</strong>
+      <span>${article.source} - ${article.impactLevel} impact - ${article.sentimentLabel}</span>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function renderNewsFeed() {
+  const articles = getFilteredArticles();
+  els.newsFeed.innerHTML = "";
+  articles.slice(0, 8).forEach((article) => {
+    const card = document.createElement("article");
+    card.className = "news-card";
+    card.innerHTML = `
+      <div class="news-card-header">
+        <span class="news-meta">${article.source} - ${article.publishedTime}</span>
+        <span class="tag-chip ${impactClass(article.impactLevel)}">${article.impactLevel} impact</span>
+      </div>
+      <h4>${article.title}</h4>
+      <p>${article.summary}</p>
+      <div class="chip-grid">
+        ${article.tickers.map((ticker) => `<span class="ticker-chip">${ticker}</span>`).join("")}
+        <span class="tag-chip ${article.sentimentLabel}">${article.sentimentLabel} ${article.sentimentScore.toFixed(2)}</span>
+        <span class="ticker-chip">${article.category}</span>
+      </div>
+      <ul class="ai-bullets">
+        ${article.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}
+      </ul>
+      <p><strong>Why it matters:</strong> ${article.whyItMatters}</p>
+      <p><strong>Possible market impact:</strong> ${article.possibleImpact}</p>
+      <div class="news-card-footer">
+        <span class="news-meta">${article.sector}</span>
+        <a href="${article.url}" target="_blank" rel="noreferrer">Mock article URL</a>
+      </div>
+    `;
+    els.newsFeed.appendChild(card);
+  });
+  els.paginationInfo.textContent = `Showing ${Math.min(8, articles.length)} of ${articles.length} matching articles. Mock pagination page 1.`;
+}
+
+function renderWatchlists() {
+  els.watchlistList.innerHTML = "";
+  watchlists.forEach((watchlist) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `watchlist-button ${watchlist.id === state.selectedWatchlistId ? "is-active" : ""}`;
+    button.innerHTML = `<strong>${watchlist.name}</strong><span>${watchlist.tickers.join(", ") || "No tickers yet"}</span>`;
+    button.addEventListener("click", () => {
+      state.selectedWatchlistId = watchlist.id;
+      render();
+    });
+    els.watchlistList.appendChild(button);
+  });
+
+  const watchlist = activeWatchlist();
+  els.activeWatchlistTitle.textContent = watchlist.name;
+  els.activeWatchlistMeta.textContent = `${watchlist.tickers.length} tickers tracked`;
+  els.watchlistTickerChips.innerHTML = "";
+  watchlist.tickers.forEach((ticker) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "remove-chip";
+    chip.textContent = `${ticker} remove`;
+    chip.addEventListener("click", () => {
+      watchlist.tickers = watchlist.tickers.filter((item) => item !== ticker);
+      render();
+    });
+    els.watchlistTickerChips.appendChild(chip);
+  });
+
+  const matchedNews = getAllArticles().filter((article) => article.tickers.some((ticker) => watchlist.tickers.includes(ticker)));
+  renderMiniList(els.watchlistMatchedNews, matchedNews.slice(0, 6));
+}
+
+function renderAlerts() {
+  els.alertRules.innerHTML = "";
+  const articles = getAllArticles();
+  alertRules.forEach((rule) => {
+    const matches = articles.filter((article) => {
+      if (!article.tickers.includes(rule.ticker)) return false;
+      if (rule.type === "Negative sentiment") return article.sentimentLabel === "Negative";
+      if (rule.type === "High impact") return article.impactLevel === "High";
+      if (rule.type === "Earnings") return article.category === "Earnings";
+      if (rule.type === "SEC filing") return filings.some((filing) => filing.ticker === rule.ticker);
+      if (rule.type === "Unusual volume") return article.volumeAnomaly >= 1.8;
+      return true;
+    });
+    const item = document.createElement("article");
+    item.className = "alert-item";
+    item.innerHTML = `
+      <strong>${rule.ticker} - ${rule.type}</strong>
+      <span>Threshold ${rule.threshold} - ${rule.active ? "Active" : "Paused"} - ${matches.length} mock matches</span>
+    `;
+    els.alertRules.appendChild(item);
+  });
+}
+
+function renderCalendar() {
+  els.calendarList.innerHTML = "";
+  economicEvents.forEach((event) => {
+    const card = document.createElement("article");
+    card.className = "data-card";
+    card.innerHTML = `
+      <div class="data-row">
+        <h4>${event.name}</h4>
+        <span class="tag-chip ${event.importance === "High" ? "Negative" : "Neutral"}">${event.importance}</span>
+      </div>
+      <p>${event.country} - ${event.scheduledTime}</p>
+      <div class="chip-grid">${event.relatedAssets.map((asset) => `<span class="ticker-chip">${asset}</span>`).join("")}</div>
+      <p>Actual: ${event.actual} - Forecast: ${event.forecast} - Previous: ${event.previous}</p>
+    `;
+    els.calendarList.appendChild(card);
+  });
+}
+
+function renderFilings() {
+  els.filingsList.innerHTML = "";
+  filings
+    .filter((filing) => state.newsTicker === "All" || filing.ticker === state.newsTicker || state.selectedSymbol === filing.ticker)
+    .forEach((filing) => {
+      const card = document.createElement("article");
+      card.className = "data-card";
+      card.innerHTML = `
+        <div class="data-row">
+          <h4>${filing.ticker} - ${filing.type}</h4>
+          <span class="ticker-chip">${filing.filedDate}</span>
+        </div>
+        <p>${filing.company}</p>
+        <p>${filing.summary}</p>
+        <a href="${filing.url}" target="_blank" rel="noreferrer">SEC mock adapter URL</a>
+      `;
+      els.filingsList.appendChild(card);
+    });
+}
+
+function renderSources() {
+  els.sourceList.innerHTML = "";
+  newsSources.forEach((source) => {
+    const card = document.createElement("article");
+    card.className = "data-card";
+    card.innerHTML = `
+      <div class="data-row">
+        <h4>${source.name}</h4>
+        <span class="status-pill ${source.enabled ? "done" : "missing"}">${source.enabled ? "Enabled" : "Disabled"}</span>
+      </div>
+      <p>${source.category} - Reliability ${source.reliability}/100</p>
+    `;
+    els.sourceList.appendChild(card);
+  });
+
+  els.coverageList.innerHTML = "";
+  coverage.forEach((item) => {
+    const row = document.createElement("article");
+    row.className = "coverage-item";
+    row.innerHTML = `
+      <div class="data-row">
+        <h4>${item.label}</h4>
+        <span class="status-pill ${item.status}">${item.status}</span>
+      </div>
+      <p>${item.note}</p>
+    `;
+    els.coverageList.appendChild(row);
+  });
+}
+
+function populateStaticSelects() {
+  const articles = getAllArticles();
+  renderOptions(els.newsTickerFilter, stocks.map((stock) => stock.symbol), state.newsTicker, "All tickers");
+  renderOptions(els.newsCategoryFilter, [...new Set(articles.map((article) => article.category))], state.newsCategory, "All categories");
+  renderOptions(els.newsSourceFilter, [...new Set(articles.map((article) => article.source))], state.newsSource, "All sources");
+  els.newsSentimentFilter.value = state.newsSentiment;
+
+  els.watchlistTickerSelect.innerHTML = "";
+  els.alertTicker.innerHTML = "";
+  stocks.forEach((stock) => {
+    const option = document.createElement("option");
+    option.value = stock.symbol;
+    option.textContent = stock.symbol;
+    els.watchlistTickerSelect.appendChild(option.cloneNode(true));
+    els.alertTicker.appendChild(option);
+  });
 }
 
 function createPriceSeries(stock) {
@@ -620,15 +1105,36 @@ function render() {
   const selected = getSelectedEvent(stock);
   const similar = findSimilarEvents(selected);
 
+  renderProductNavigation();
+  populateStaticSelects();
   renderTickers();
   renderMetrics(stock, selected, similar);
-  drawChart(stock, events);
+  if (state.activePage === "dashboard") {
+    drawChart(stock, events);
+  }
   renderEventDetail(selected);
   renderEvents(events);
   renderSimilarEvents(selected, similar);
+  renderDashboardSystem();
+  renderNewsFeed();
+  renderWatchlists();
+  renderAlerts();
+  renderCalendar();
+  renderFilings();
+  renderSources();
 }
 
 els.tickerSearch.addEventListener("input", renderTickers);
+els.globalSearch.addEventListener("input", (event) => {
+  state.globalSearch = event.target.value;
+  render();
+});
+els.navButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    state.activePage = button.dataset.page;
+    render();
+  });
+});
 els.eventTypeFilter.addEventListener("change", (event) => {
   state.filterType = event.target.value;
   render();
@@ -644,6 +1150,50 @@ document.querySelectorAll(".segment").forEach((button) => {
     state.selectedWindow = button.dataset.window;
     render();
   });
+});
+els.newsTickerFilter.addEventListener("change", (event) => {
+  state.newsTicker = event.target.value;
+  render();
+});
+els.newsSentimentFilter.addEventListener("change", (event) => {
+  state.newsSentiment = event.target.value;
+  render();
+});
+els.newsCategoryFilter.addEventListener("change", (event) => {
+  state.newsCategory = event.target.value;
+  render();
+});
+els.newsSourceFilter.addEventListener("change", (event) => {
+  state.newsSource = event.target.value;
+  render();
+});
+els.createWatchlistButton.addEventListener("click", () => {
+  const name = els.watchlistNameInput.value.trim();
+  if (!name) return;
+  const id = `wl-${Date.now()}`;
+  watchlists.push({ id, name, tickers: [] });
+  state.selectedWatchlistId = id;
+  els.watchlistNameInput.value = "";
+  render();
+});
+els.addTickerButton.addEventListener("click", () => {
+  const ticker = els.watchlistTickerSelect.value;
+  const watchlist = activeWatchlist();
+  if (ticker && !watchlist.tickers.includes(ticker)) {
+    watchlist.tickers.push(ticker);
+    render();
+  }
+});
+els.alertForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  alertRules.unshift({
+    id: `alert-${Date.now()}`,
+    ticker: els.alertTicker.value,
+    type: els.alertType.value,
+    threshold: Number(els.alertThreshold.value || 75),
+    active: true
+  });
+  render();
 });
 els.priceChart.addEventListener("click", handleCanvasClick);
 els.exportButton.addEventListener("click", () => downloadAnalysis(getStock(), getSelectedEvent()));

@@ -40,6 +40,17 @@
             <span>Bullish or neutral only</span>
           </label>
         </div>
+
+        <nav class="sidebar-block nav-block" aria-label="Product navigation">
+          <span class="block-title">System Views</span>
+          <button class="nav-button is-active" data-page="dashboard" type="button">Dashboard</button>
+          <button class="nav-button" data-page="news" type="button">News Feed</button>
+          <button class="nav-button" data-page="watchlists" type="button">Watchlists</button>
+          <button class="nav-button" data-page="alerts" type="button">Alerts</button>
+          <button class="nav-button" data-page="calendar" type="button">Economic Calendar</button>
+          <button class="nav-button" data-page="filings" type="button">SEC Filings</button>
+          <button class="nav-button" data-page="sources" type="button">Sources/Admin</button>
+        </nav>
       </aside>
 
       <main class="workspace">
@@ -49,6 +60,7 @@
             <h2 id="stockTitle">Ticker</h2>
           </div>
           <div class="toolbar" aria-label="Analysis controls">
+            <input id="globalSearch" class="top-search" type="search" placeholder="Search news, ticker, source" />
             <div class="segmented" role="group" aria-label="Return window">
               <button class="segment is-active" data-window="1d" type="button">1D</button>
               <button class="segment" data-window="3d" type="button">3D</button>
@@ -59,107 +71,276 @@
           </div>
         </header>
 
-        <section class="metrics-grid" aria-label="Stock summary metrics">
-          <article class="metric">
-            <span>Selected Event Return</span>
-            <strong id="selectedReturn">0.0%</strong>
-            <small id="selectedReturnLabel">1D associated reaction</small>
-          </article>
-          <article class="metric">
-            <span>Signal Strength</span>
-            <strong id="signalStrength">0/100</strong>
-            <small id="signalStrengthLabel">Composite score</small>
-          </article>
-          <article class="metric">
-            <span>Volume Anomaly</span>
-            <strong id="volumeAnomaly">0.0x</strong>
-            <small>Compared with recent average</small>
-          </article>
-          <article class="metric">
-            <span>Similar Events</span>
-            <strong id="similarCount">0</strong>
-            <small id="similarSummary">Pattern sample</small>
-          </article>
+        <section class="page-view is-active" data-page-panel="dashboard">
+          <section class="metrics-grid" aria-label="Stock summary metrics">
+            <article class="metric">
+              <span>Selected Event Return</span>
+              <strong id="selectedReturn">0.0%</strong>
+              <small id="selectedReturnLabel">1D associated reaction</small>
+            </article>
+            <article class="metric">
+              <span>Signal Strength</span>
+              <strong id="signalStrength">0/100</strong>
+              <small id="signalStrengthLabel">Composite score</small>
+            </article>
+            <article class="metric">
+              <span>Volume Anomaly</span>
+              <strong id="volumeAnomaly">0.0x</strong>
+              <small>Compared with recent average</small>
+            </article>
+            <article class="metric">
+              <span>Similar Events</span>
+              <strong id="similarCount">0</strong>
+              <small id="similarSummary">Pattern sample</small>
+            </article>
+          </section>
+
+          <section class="system-grid" aria-label="Market news dashboard">
+            <div class="system-panel">
+              <div>
+                <h3>Trending Tickers</h3>
+                <p>News volume and impact ranking</p>
+              </div>
+              <div id="trendingTickers" class="chip-grid"></div>
+            </div>
+            <div class="system-panel">
+              <div>
+                <h3>Market Sentiment</h3>
+                <p>Mock analyzer across latest articles</p>
+              </div>
+              <div id="sentimentOverview" class="sentiment-overview"></div>
+            </div>
+            <div class="system-panel">
+              <div>
+                <h3>Breaking News</h3>
+                <p>Highest recency and impact</p>
+              </div>
+              <div id="breakingNews" class="mini-list"></div>
+            </div>
+            <div class="system-panel">
+              <div>
+                <h3>Watchlist News</h3>
+                <p id="watchlistNewsLabel">Default watchlist</p>
+              </div>
+              <div id="watchlistNews" class="mini-list"></div>
+            </div>
+          </section>
+
+          <section class="analysis-layout">
+            <div class="chart-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Price, Volume, And News Markers</h3>
+                  <p id="chartSubtitle">Click a marker or event to inspect the reaction window.</p>
+                </div>
+                <span id="selectedDate" class="date-pill">Date</span>
+              </div>
+              <canvas id="priceChart" width="1180" height="560" aria-label="Price chart with market news markers"></canvas>
+            </div>
+
+            <aside class="detail-panel" aria-label="Selected news event">
+              <div class="panel-heading compact">
+                <div>
+                  <h3>Event Detail</h3>
+                  <p id="eventSource">Source</p>
+                </div>
+                <span id="sentimentPill" class="sentiment-pill">Neutral</span>
+              </div>
+              <h4 id="eventHeadline">Select an event</h4>
+              <p id="eventSummary" class="event-summary"></p>
+              <dl class="signal-list">
+                <div>
+                  <dt>Type</dt>
+                  <dd id="eventType">-</dd>
+                </div>
+                <div>
+                  <dt>Surprise</dt>
+                  <dd id="eventSurprise">-</dd>
+                </div>
+                <div>
+                  <dt>Confidence</dt>
+                  <dd id="eventConfidence">-</dd>
+                </div>
+                <div>
+                  <dt>Risk Note</dt>
+                  <dd id="eventRisk">-</dd>
+                </div>
+              </dl>
+              <div class="reaction-table-wrap">
+                <table class="reaction-table">
+                  <thead>
+                    <tr>
+                      <th>Window</th>
+                      <th>Reaction</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reactionRows"></tbody>
+                </table>
+              </div>
+            </aside>
+          </section>
+
+          <section class="lower-grid">
+            <div class="events-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>News Timeline</h3>
+                  <p id="eventCount">0 events</p>
+                </div>
+              </div>
+              <div id="eventList" class="event-list"></div>
+            </div>
+
+            <div class="similar-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Similar Event Pattern</h3>
+                  <p id="similarPatternLabel">Matched by type and sentiment</p>
+                </div>
+              </div>
+              <div id="similarEvents" class="similar-events"></div>
+            </div>
+          </section>
         </section>
 
-        <section class="analysis-layout">
-          <div class="chart-panel">
-            <div class="panel-heading">
-              <div>
-                <h3>Price, Volume, And News Markers</h3>
-                <p id="chartSubtitle">Click a marker or event to inspect the reaction window.</p>
-              </div>
-              <span id="selectedDate" class="date-pill">Date</span>
+        <section class="page-view" data-page-panel="news">
+          <div class="panel-heading page-heading">
+            <div>
+              <p class="eyebrow">Market News Feed</p>
+              <h3>Latest Articles</h3>
+              <p>Searchable mock feed with ticker, sector, source, sentiment, category, date, and impact filters.</p>
             </div>
-            <canvas id="priceChart" width="1180" height="560" aria-label="Price chart with market news markers"></canvas>
           </div>
-
-          <aside class="detail-panel" aria-label="Selected news event">
-            <div class="panel-heading compact">
-              <div>
-                <h3>Event Detail</h3>
-                <p id="eventSource">Source</p>
-              </div>
-              <span id="sentimentPill" class="sentiment-pill">Neutral</span>
-            </div>
-            <h4 id="eventHeadline">Select an event</h4>
-            <p id="eventSummary" class="event-summary"></p>
-            <dl class="signal-list">
-              <div>
-                <dt>Type</dt>
-                <dd id="eventType">-</dd>
-              </div>
-              <div>
-                <dt>Surprise</dt>
-                <dd id="eventSurprise">-</dd>
-              </div>
-              <div>
-                <dt>Confidence</dt>
-                <dd id="eventConfidence">-</dd>
-              </div>
-              <div>
-                <dt>Risk Note</dt>
-                <dd id="eventRisk">-</dd>
-              </div>
-            </dl>
-            <div class="reaction-table-wrap">
-              <table class="reaction-table">
-                <thead>
-                  <tr>
-                    <th>Window</th>
-                    <th>Reaction</th>
-                  </tr>
-                </thead>
-                <tbody id="reactionRows"></tbody>
-              </table>
-            </div>
-          </aside>
+          <div class="filter-grid">
+            <select id="newsTickerFilter" class="light-input">
+              <option value="All">All tickers</option>
+            </select>
+            <select id="newsSentimentFilter" class="light-input">
+              <option value="All">All sentiment</option>
+              <option value="Positive">Positive</option>
+              <option value="Neutral">Neutral</option>
+              <option value="Negative">Negative</option>
+            </select>
+            <select id="newsCategoryFilter" class="light-input">
+              <option value="All">All categories</option>
+            </select>
+            <select id="newsSourceFilter" class="light-input">
+              <option value="All">All sources</option>
+            </select>
+          </div>
+          <div id="newsFeed" class="news-feed"></div>
+          <div id="paginationInfo" class="pagination-info"></div>
         </section>
 
-        <section class="lower-grid">
-          <div class="events-panel">
-            <div class="panel-heading">
-              <div>
-                <h3>News Timeline</h3>
-                <p id="eventCount">0 events</p>
-              </div>
+        <section class="page-view" data-page-panel="watchlists">
+          <div class="panel-heading page-heading">
+            <div>
+              <p class="eyebrow">Watchlists</p>
+              <h3>Tracked Ticker Groups</h3>
+              <p>Create focused ticker groups and filter dashboard news to watched names.</p>
             </div>
-            <div id="eventList" class="event-list"></div>
           </div>
-
-          <div class="similar-panel">
-            <div class="panel-heading">
-              <div>
-                <h3>Similar Event Pattern</h3>
-                <p id="similarPatternLabel">Matched by type and sentiment</p>
+          <div class="two-column">
+            <div class="system-panel">
+              <h3>Watchlist Manager</h3>
+              <div id="watchlistList" class="watchlist-list"></div>
+              <div class="inline-form">
+                <input id="watchlistNameInput" class="light-input" type="text" placeholder="New watchlist name" />
+                <button id="createWatchlistButton" class="primary-button" type="button">Create</button>
               </div>
             </div>
-            <div id="similarEvents" class="similar-events"></div>
+            <div class="system-panel">
+              <div>
+                <h3 id="activeWatchlistTitle">Selected Watchlist</h3>
+                <p id="activeWatchlistMeta">Tickers and matched news</p>
+              </div>
+              <div class="inline-form">
+                <select id="watchlistTickerSelect" class="light-input"></select>
+                <button id="addTickerButton" class="primary-button" type="button">Add Ticker</button>
+              </div>
+              <div id="watchlistTickerChips" class="chip-grid"></div>
+              <div id="watchlistMatchedNews" class="mini-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="page-view" data-page-panel="alerts">
+          <div class="panel-heading page-heading">
+            <div>
+              <p class="eyebrow">Alerts</p>
+              <h3>Rule-Based Alert Center</h3>
+              <p>Mock alert rules for breaking news, negative sentiment, SEC filings, high impact, earnings, and unusual volume.</p>
+            </div>
+          </div>
+          <div class="two-column">
+            <form id="alertForm" class="system-panel form-panel">
+              <h3>Create Alert Rule</h3>
+              <select id="alertTicker" class="light-input"></select>
+              <select id="alertType" class="light-input">
+                <option value="Breaking news">Breaking news for ticker</option>
+                <option value="Negative sentiment">Negative sentiment news</option>
+                <option value="High impact">High-impact event</option>
+                <option value="Earnings">Earnings-related news</option>
+                <option value="SEC filing">SEC filing detected</option>
+                <option value="Unusual volume">Unusual news volume</option>
+              </select>
+              <input id="alertThreshold" class="light-input" type="number" min="1" max="100" value="75" />
+              <button class="primary-button" type="submit">Create Rule</button>
+            </form>
+            <div class="system-panel">
+              <div>
+                <h3>Alert Rules And Events</h3>
+                <p>Rules are evaluated against the mock news stream.</p>
+              </div>
+              <div id="alertRules" class="alert-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="page-view" data-page-panel="calendar">
+          <div class="panel-heading page-heading">
+            <div>
+              <p class="eyebrow">Economic Calendar</p>
+              <h3>Upcoming Market Events</h3>
+              <p>CPI, jobs, Fed, GDP, and earnings events with forecast, previous, actual, and related assets.</p>
+            </div>
+          </div>
+          <div id="calendarList" class="data-list"></div>
+        </section>
+
+        <section class="page-view" data-page-panel="filings">
+          <div class="panel-heading page-heading">
+            <div>
+              <p class="eyebrow">SEC Filings</p>
+              <h3>Company Filing Monitor</h3>
+              <p>Mock SEC adapter output by ticker with filing type, date, URL, and summary.</p>
+            </div>
+          </div>
+          <div id="filingsList" class="data-list"></div>
+        </section>
+
+        <section class="page-view" data-page-panel="sources">
+          <div class="panel-heading page-heading">
+            <div>
+              <p class="eyebrow">Sources/Admin</p>
+              <h3>Source Reliability And Backend Blueprint</h3>
+              <p>Provider/source management plus the REST, Prisma, and job architecture from the full-stack spec.</p>
+            </div>
+          </div>
+          <div class="two-column">
+            <div class="system-panel">
+              <h3>News Sources</h3>
+              <div id="sourceList" class="data-list compact-list"></div>
+            </div>
+            <div class="system-panel">
+              <h3>Full-Stack Coverage</h3>
+              <div id="coverageList" class="coverage-list"></div>
+            </div>
           </div>
         </section>
       </main>
     </div>
 
-    <script src="src/app.js?v=2"></script>
+    <script src="src/app.js?v=3"></script>
   </body>
 </html>

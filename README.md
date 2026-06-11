@@ -28,6 +28,41 @@ Any free port works; use a different number if `4182` is already occupied.
 - Sentiment, event type, surprise level, volume anomaly, and confidence signals.
 - Similar-event comparison for recurring event patterns.
 - Dense desktop layout with responsive mobile behavior.
+- Multi-view market news interface with Dashboard, News Feed, Watchlists, Alerts, Economic Calendar, SEC Filings, and Sources/Admin pages.
+- Mock market news feed with article cards, source, URL, published time, tickers, AI-style bullets, summary, sentiment score, category, impact level, why-it-matters, and possible-impact fields.
+- Search and filters for ticker, source, category, and sentiment.
+- Watchlist management UI with multiple watchlists, add/remove ticker controls, and watchlist-specific news.
+- Alert rule UI for breaking news, negative sentiment, high-impact events, earnings news, SEC filings, and unusual news volume.
+- Economic calendar and SEC filing mock adapter pages.
+- Source management view with reliability score, category, and enabled status.
+- Full-stack coverage checklist showing which requested features are implemented in the static MVP and which still need a real backend.
+
+## Full-Stack Spec Coverage
+
+Covered in this static MVP:
+
+- Market news feed
+- Ticker filtering
+- Watchlists
+- Alerts UI and mock rule evaluation
+- AI-style summaries
+- Mock sentiment analysis
+- Dashboard cards
+- Economic calendar
+- SEC filings
+- Source/admin management display
+- Responsive financial dashboard UI
+- Mock data that runs without paid APIs
+
+Not yet implemented as true backend infrastructure:
+
+- JWT authentication
+- Node/Express REST API
+- PostgreSQL database
+- Prisma schema and migrations
+- BullMQ/Redis background jobs
+- React/TypeScript monorepo
+- Zod validation and backend tests
 
 ## Future Data Sources
 
