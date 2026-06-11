@@ -387,6 +387,20 @@
       </main>
     </div>
 
-    <script src="src/app.js?v=3"></script>
+    <div id="newsModal" class="news-modal" aria-hidden="true">
+      <div class="news-modal-backdrop" data-close-news-modal></div>
+      <article class="news-modal-panel" role="dialog" aria-modal="true" aria-labelledby="newsModalTitle">
+        <header class="news-modal-header">
+          <div>
+            <p id="newsModalMeta" class="eyebrow">Signal detail</p>
+            <h3 id="newsModalTitle">News detail</h3>
+          </div>
+          <button id="newsModalClose" class="modal-close-button" type="button" aria-label="Close news detail">Close</button>
+        </header>
+        <div id="newsModalBody" class="news-modal-body"></div>
+      </article>
+    </div>
+
+    <script src="src/app.js?v=4"></script>
   </body>
 </html>

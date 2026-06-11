@@ -443,7 +443,12 @@ const els = {
   calendarList: document.querySelector("#calendarList"),
   filingsList: document.querySelector("#filingsList"),
   sourceList: document.querySelector("#sourceList"),
-  coverageList: document.querySelector("#coverageList")
+  coverageList: document.querySelector("#coverageList"),
+  newsModal: document.querySelector("#newsModal"),
+  newsModalTitle: document.querySelector("#newsModalTitle"),
+  newsModalMeta: document.querySelector("#newsModalMeta"),
+  newsModalBody: document.querySelector("#newsModalBody"),
+  newsModalClose: document.querySelector("#newsModalClose")
 };
 
 function getStock() {
@@ -538,6 +543,187 @@ function impactClass(impact) {
   return "Positive";
 }
 
+function articleEventId(article) {
+  return article.id.replace("article-", "");
+}
+
+function findArticleContext(article) {
+  const eventId = articleEventId(article);
+  const stock = stocks.find((item) => item.events.some((event) => event.id === eventId));
+  const event = stock?.events.find((item) => item.id === eventId);
+  return { stock, event };
+}
+
+function findArticleForEvent(event) {
+  return getAllArticles().find((article) => article.id === `article-${event.id}`);
+}
+
+function renderReturnRows(returns) {
+  return Object.entries(returns)
+    .map(
+      ([windowLabel, value]) => `
+        <tr>
+          <td>${windowLabel.toUpperCase()}</td>
+          <td class="${sentimentClass(value)}">${percent(value)}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function renderPreviousSignalBrief(stock, event) {
+  if (!stock || !event) {
+    return `
+      <section class="detail-section">
+        <h4>Previous Signal Impact</h4>
+        <p>No linked signal was found for this article.</p>
+      </section>
+    `;
+  }
+
+  const previous = getPreviousSignal(stock, event);
+  if (!previous) {
+    return `
+      <section class="detail-section">
+        <h4>Previous Signal Impact</h4>
+        <p>This is the first tracked ${stock.symbol} signal in the sample window, so there is no prior market-moving headline to compare.</p>
+      </section>
+    `;
+  }
+
+  const previousReturn = previous.returns[state.selectedWindow];
+  const currentReturn = event.returns[state.selectedWindow];
+  const sameDirection = (previousReturn >= 0 && currentReturn >= 0) || (previousReturn < 0 && currentReturn < 0);
+  const relationship = sameDirection ? "Confirmed the prior signal" : "Reversed the prior signal";
+  return `
+    <section class="detail-section">
+      <div class="modal-section-heading">
+        <h4>Previous Signal Impact</h4>
+        <span class="status-pill ${sameDirection ? "done" : "partial"}">${relationship}</span>
+      </div>
+      <p><strong>${dateLabel(previous.date)}:</strong> ${previous.headline}</p>
+      <div class="modal-stat-grid three-up">
+        <div>
+          <span>Prior ${state.selectedWindow.toUpperCase()}</span>
+          <strong class="${sentimentClass(previousReturn)}">${percent(previousReturn)}</strong>
+        </div>
+        <div>
+          <span>Current ${state.selectedWindow.toUpperCase()}</span>
+          <strong class="${sentimentClass(currentReturn)}">${percent(currentReturn)}</strong>
+        </div>
+        <div>
+          <span>Confidence Delta</span>
+          <strong class="${sentimentClass(event.confidence - previous.confidence)}">${event.confidence - previous.confidence > 0 ? "+" : ""}${event.confidence - previous.confidence} pts</strong>
+        </div>
+      </div>
+      <p>${sameDirection ? "The newer article reinforced the direction of the earlier read." : "The newer article pushed against the previous read, which is why the dashboard treats it as a changed signal."}</p>
+    </section>
+  `;
+}
+
+function openNewsModal(article) {
+  const { stock, event } = findArticleContext(article);
+  const currentReturn = event?.returns[state.selectedWindow] ?? article.returns[state.selectedWindow];
+
+  els.newsModalTitle.textContent = article.title;
+  els.newsModalMeta.textContent = `${article.source} - ${article.publishedTime} - ${article.tickers.join(", ")}`;
+  els.newsModalBody.innerHTML = `
+    <section class="detail-section lead-detail">
+      <div class="modal-section-heading">
+        <h4>${article.company}</h4>
+        <span class="tag-chip ${article.sentimentLabel}">${article.sentimentLabel} ${article.sentimentScore.toFixed(2)}</span>
+      </div>
+      <p>${article.summary}</p>
+      <div class="chip-grid">
+        ${article.tickers.map((ticker) => `<span class="ticker-chip">${ticker}</span>`).join("")}
+        <span class="ticker-chip">${article.sector}</span>
+        <span class="ticker-chip">${article.category}</span>
+        <span class="tag-chip ${impactClass(article.impactLevel)}">${article.impactLevel} impact</span>
+      </div>
+    </section>
+
+    <section class="detail-section">
+      <h4>Signal Telemetry</h4>
+      <div class="modal-stat-grid">
+        <div>
+          <span>Confidence</span>
+          <strong>${article.confidence}/100</strong>
+        </div>
+        <div>
+          <span>News Volume</span>
+          <strong>${article.volumeAnomaly.toFixed(1)}x</strong>
+        </div>
+        <div>
+          <span>${state.selectedWindow.toUpperCase()} Reaction</span>
+          <strong class="${sentimentClass(currentReturn)}">${percent(currentReturn)}</strong>
+        </div>
+        <div>
+          <span>Category</span>
+          <strong>${article.category}</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-section">
+      <h4>AI News Brief</h4>
+      <ul class="ai-bullets modal-bullets">
+        ${article.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}
+      </ul>
+    </section>
+
+    <section class="detail-section">
+      <h4>Why It Matters</h4>
+      <p>${article.whyItMatters}</p>
+      <p>${article.possibleImpact}</p>
+    </section>
+
+    ${renderPreviousSignalBrief(stock, event)}
+
+    <section class="detail-section">
+      <h4>Return Windows After Headline</h4>
+      <table class="modal-return-table">
+        <thead>
+          <tr>
+            <th>Window</th>
+            <th>Associated Reaction</th>
+          </tr>
+        </thead>
+        <tbody>${renderReturnRows(article.returns)}</tbody>
+      </table>
+    </section>
+
+    <section class="detail-section">
+      <h4>Source</h4>
+      <p>${article.source} source reliability is shown in Sources/Admin. This mock article is a sample record for product testing.</p>
+      <a href="${article.url}" target="_blank" rel="noreferrer">Open mock source URL</a>
+    </section>
+  `;
+
+  els.newsModal.classList.add("is-open");
+  els.newsModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  els.newsModalClose.focus();
+}
+
+function closeNewsModal() {
+  els.newsModal.classList.remove("is-open");
+  els.newsModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+}
+
+function makeArticleOpenable(element, article) {
+  element.tabIndex = 0;
+  element.setAttribute("role", "button");
+  element.setAttribute("aria-label", `Open news detail: ${article.title}`);
+  element.addEventListener("click", () => openNewsModal(article));
+  element.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openNewsModal(article);
+    }
+  });
+}
+
 function renderOptions(select, values, current, prefix) {
   select.innerHTML = "";
   const all = document.createElement("option");
@@ -626,6 +812,7 @@ function renderMiniList(container, articles) {
       <strong>${article.tickers.join(", ")} - ${article.title}</strong>
       <span>${article.source} - ${article.impactLevel} impact - ${article.sentimentLabel}</span>
     `;
+    makeArticleOpenable(item, article);
     container.appendChild(item);
   });
 }
@@ -648,16 +835,12 @@ function renderNewsFeed() {
         <span class="tag-chip ${article.sentimentLabel}">${article.sentimentLabel} ${article.sentimentScore.toFixed(2)}</span>
         <span class="ticker-chip">${article.category}</span>
       </div>
-      <ul class="ai-bullets">
-        ${article.bullets.map((bullet) => `<li>${bullet}</li>`).join("")}
-      </ul>
-      <p><strong>Why it matters:</strong> ${article.whyItMatters}</p>
-      <p><strong>Possible market impact:</strong> ${article.possibleImpact}</p>
       <div class="news-card-footer">
         <span class="news-meta">${article.sector}</span>
-        <a href="${article.url}" target="_blank" rel="noreferrer">Mock article URL</a>
+        <span class="news-meta">Open full impact brief</span>
       </div>
     `;
+    makeArticleOpenable(card, article);
     els.newsFeed.appendChild(card);
   });
   els.paginationInfo.textContent = `Showing ${Math.min(8, articles.length)} of ${articles.length} matching articles. Mock pagination page 1.`;
@@ -1142,6 +1325,10 @@ function renderEvents(events) {
       state.selectedEventId = event.id;
       render();
     });
+    button.addEventListener("dblclick", () => {
+      const article = findArticleForEvent(event);
+      if (article) openNewsModal(article);
+    });
     els.eventList.appendChild(button);
   });
 }
@@ -1325,6 +1512,17 @@ els.alertForm.addEventListener("submit", (event) => {
 });
 els.priceChart.addEventListener("click", handleCanvasClick);
 els.exportButton.addEventListener("click", () => downloadAnalysis(getStock(), getSelectedEvent()));
+els.newsModalClose.addEventListener("click", closeNewsModal);
+els.newsModal.addEventListener("click", (event) => {
+  if (event.target.matches("[data-close-news-modal]")) {
+    closeNewsModal();
+  }
+});
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && els.newsModal.classList.contains("is-open")) {
+    closeNewsModal();
+  }
+});
 window.addEventListener("resize", render);
 
 render();

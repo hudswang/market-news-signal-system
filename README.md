@@ -105,6 +105,7 @@ The API uses mock provider adapters by default, so the app runs without paid dat
 - Dense desktop layout with responsive mobile behavior.
 - Multi-view stock-impact interface with Impact Dashboard, Signal Feed, Watchlists, Alerts, Economic Calendar, SEC Filings, and Sources/Admin pages.
 - Mock market news feed with article cards, source, URL, published time, tickers, AI-style bullets, summary, sentiment score, category, impact level, why-it-matters, and possible-impact fields.
+- Clickable news detail drawer for opening a full impact brief with AI summary bullets, signal telemetry, prior-signal comparison, and 1D/3D/7D/30D reaction table.
 - Search and filters for ticker, source, category, and sentiment.
 - Watchlist management UI with multiple watchlists, add/remove ticker controls, and watchlist-specific news.
 - Alert rule UI for breaking news, negative sentiment, high-impact events, earnings news, SEC filings, and unusual news volume.
