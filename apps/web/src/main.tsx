@@ -171,8 +171,8 @@ function ListPage<T>({ title, loading, error, items, render }: { title: string; 
 function App() {
   const [page, setPage] = useState<Page>(localStorage.getItem("market-news-token") ? "dashboard" : "login");
   const pages: Array<[Page, string]> = [
-    ["dashboard", "Dashboard"],
-    ["news", "News Feed"],
+    ["dashboard", "Impact Dashboard"],
+    ["news", "Signal Feed"],
     ["watchlists", "Watchlists"],
     ["alerts", "Alerts"],
     ["calendar", "Economic Calendar"],
@@ -185,8 +185,8 @@ function App() {
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
       <aside className="bg-slate-950 p-5 text-white">
-        <h1 className="mb-1 text-xl font-black">Market News System</h1>
-        <p className="mb-6 text-sm text-slate-400">Full-stack research terminal</p>
+        <h1 className="mb-1 text-xl font-black">Stock News Impact</h1>
+        <p className="mb-6 text-sm text-slate-400">Backend-ready signal research terminal</p>
         <nav className="grid gap-2">
           {pages.map(([key, label]) => (
             <button key={key} className={`nav-button ${page === key ? "nav-button-active" : ""}`} onClick={() => setPage(key)}>{label}</button>

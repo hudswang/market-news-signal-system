@@ -343,7 +343,7 @@ const coverage = [
   { label: "Alerts", status: "done", note: "Implemented mock alert rules and rule evaluation against article impact/sentiment/filing-style events." },
   { label: "AI summaries", status: "done", note: "Implemented mock bullet summaries, why-it-matters, and possible-impact fields." },
   { label: "Sentiment analysis", status: "done", note: "Implemented mock sentiment label and -1 to 1 score per article." },
-  { label: "Dashboard", status: "done", note: "Implemented trending tickers, breaking news, market sentiment, news volume, watchlist news, and the original reaction chart." },
+  { label: "Impact dashboard", status: "done", note: "Implemented ticker trends, breaking signals, sentiment, news volume, watchlist news, previous-signal analysis, and the professional reaction chart." },
   { label: "Economic calendar", status: "done", note: "Implemented CPI, jobs, Fed, GDP-style, and earnings events using mock data." },
   { label: "SEC filings", status: "done", note: "Implemented mock filing list by ticker with type, company, date, URL, and summary." },
   { label: "Admin/source management", status: "done", note: "Implemented source reliability/category/enabled display." },

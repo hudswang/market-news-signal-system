@@ -1,8 +1,8 @@
-# Market News Signal System
+# Stock News Impact Analysis System
 
-A personal research MVP for studying how stock prices reacted around market news events.
+A personal research product for studying how specific stocks reacted around news events and prior signals.
 
-The app lets you choose a ticker, inspect a historical price chart, overlay news markers, and compare post-news return windows such as 1 day, 3 days, 7 days, and 30 days. It uses realistic sample data and intentionally describes results as associated reactions rather than guaranteed causation.
+The app lets you choose a ticker, inspect a professional OHLC price chart, overlay news markers, compare previous signals, and review post-news return windows such as 1 day, 3 days, 7 days, and 30 days. It uses realistic sample data and intentionally describes results as associated reactions rather than guaranteed causation.
 
 ## Run Locally
 
@@ -20,9 +20,9 @@ http://127.0.0.1:4182/
 
 Any free port works; use a different number if `4182` is already occupied.
 
-## Full-Stack App
+## Optional Full-Stack Scaffold
 
-The repo now also includes the requested production-oriented monorepo scaffold:
+The repo also includes a production-oriented scaffold for turning the stock news impact analysis product into a backend-backed app:
 
 ```text
 apps/api        Node.js + Express + TypeScript API
@@ -58,7 +58,7 @@ Run the API:
 npm run dev
 ```
 
-Run the React app:
+Run the optional React scaffold:
 
 ```bash
 npm run dev:web
@@ -71,7 +71,7 @@ demo@market.local
 password123
 ```
 
-The API uses mock provider adapters by default, so the app runs without paid data APIs. Real providers can be plugged into the provider interfaces under `apps/api/src/providers`.
+The API uses mock provider adapters by default, so the app runs without paid data APIs. Real providers can be plugged into the provider interfaces under `apps/api/src/providers`. The richer stock-impact dashboard remains the root static app.
 
 ## API Surface
 
@@ -103,7 +103,7 @@ The API uses mock provider adapters by default, so the app runs without paid dat
 - Previous-signal analysis showing the prior event, prior return, confidence delta, and whether the new headline confirmed or reversed the earlier signal.
 - Similar-event comparison for recurring event patterns.
 - Dense desktop layout with responsive mobile behavior.
-- Multi-view market news interface with Dashboard, News Feed, Watchlists, Alerts, Economic Calendar, SEC Filings, and Sources/Admin pages.
+- Multi-view stock-impact interface with Impact Dashboard, Signal Feed, Watchlists, Alerts, Economic Calendar, SEC Filings, and Sources/Admin pages.
 - Mock market news feed with article cards, source, URL, published time, tickers, AI-style bullets, summary, sentiment score, category, impact level, why-it-matters, and possible-impact fields.
 - Search and filters for ticker, source, category, and sentiment.
 - Watchlist management UI with multiple watchlists, add/remove ticker controls, and watchlist-specific news.
@@ -116,13 +116,13 @@ The API uses mock provider adapters by default, so the app runs without paid dat
 
 Covered in this static MVP:
 
-- Market news feed
+- Stock news impact feed
 - Ticker filtering
 - Watchlists
 - Alerts UI and mock rule evaluation
 - AI-style summaries
 - Mock sentiment analysis
-- Dashboard cards
+- Impact dashboard cards
 - Economic calendar
 - SEC filings
 - Source/admin management display
