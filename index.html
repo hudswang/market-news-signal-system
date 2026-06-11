@@ -130,11 +130,38 @@
             <div class="chart-panel">
               <div class="panel-heading">
                 <div>
-                  <h3>Price, Volume, And News Markers</h3>
-                  <p id="chartSubtitle">Click a marker or event to inspect the reaction window.</p>
+                  <h3>Professional Price Action</h3>
+                  <p id="chartSubtitle">Candles show OHLC, volume, 20-period average, and news signal markers.</p>
                 </div>
                 <span id="selectedDate" class="date-pill">Date</span>
               </div>
+              <div class="quote-strip" aria-label="Selected candle market data">
+                <div>
+                  <span>Open</span>
+                  <strong id="quoteOpen">$0.00</strong>
+                </div>
+                <div>
+                  <span>High</span>
+                  <strong id="quoteHigh">$0.00</strong>
+                </div>
+                <div>
+                  <span>Low</span>
+                  <strong id="quoteLow">$0.00</strong>
+                </div>
+                <div>
+                  <span>Close</span>
+                  <strong id="quoteClose">$0.00</strong>
+                </div>
+                <div>
+                  <span>Volume</span>
+                  <strong id="quoteVolume">0.0M</strong>
+                </div>
+                <div>
+                  <span>Range</span>
+                  <strong id="quoteRange">0.0%</strong>
+                </div>
+              </div>
+              <div id="chartSignalNote" class="chart-signal-note">Previous signal context appears here after selecting a later market event.</div>
               <canvas id="priceChart" width="1180" height="560" aria-label="Price chart with market news markers"></canvas>
             </div>
 
@@ -148,6 +175,25 @@
               </div>
               <h4 id="eventHeadline">Select an event</h4>
               <p id="eventSummary" class="event-summary"></p>
+              <div class="previous-signal-card">
+                <span class="block-title">Previous Signal Impact</span>
+                <h4 id="previousSignalTitle">Previous signal</h4>
+                <p id="previousSignalSummary">Select an event to compare it with the prior signal.</p>
+                <div class="previous-signal-grid">
+                  <div>
+                    <span>Prior Return</span>
+                    <strong id="previousSignalReturn">0.0%</strong>
+                  </div>
+                  <div>
+                    <span>Signal Delta</span>
+                    <strong id="previousSignalDelta">0 pts</strong>
+                  </div>
+                  <div>
+                    <span>Relationship</span>
+                    <strong id="previousSignalRelationship">-</strong>
+                  </div>
+                </div>
+              </div>
               <dl class="signal-list">
                 <div>
                   <dt>Type</dt>

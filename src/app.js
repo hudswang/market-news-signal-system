@@ -385,11 +385,23 @@ const els = {
   similarSummary: document.querySelector("#similarSummary"),
   chartSubtitle: document.querySelector("#chartSubtitle"),
   selectedDate: document.querySelector("#selectedDate"),
+  quoteOpen: document.querySelector("#quoteOpen"),
+  quoteHigh: document.querySelector("#quoteHigh"),
+  quoteLow: document.querySelector("#quoteLow"),
+  quoteClose: document.querySelector("#quoteClose"),
+  quoteVolume: document.querySelector("#quoteVolume"),
+  quoteRange: document.querySelector("#quoteRange"),
+  chartSignalNote: document.querySelector("#chartSignalNote"),
   priceChart: document.querySelector("#priceChart"),
   eventSource: document.querySelector("#eventSource"),
   sentimentPill: document.querySelector("#sentimentPill"),
   eventHeadline: document.querySelector("#eventHeadline"),
   eventSummary: document.querySelector("#eventSummary"),
+  previousSignalTitle: document.querySelector("#previousSignalTitle"),
+  previousSignalSummary: document.querySelector("#previousSignalSummary"),
+  previousSignalReturn: document.querySelector("#previousSignalReturn"),
+  previousSignalDelta: document.querySelector("#previousSignalDelta"),
+  previousSignalRelationship: document.querySelector("#previousSignalRelationship"),
   eventType: document.querySelector("#eventType"),
   eventSurprise: document.querySelector("#eventSurprise"),
   eventConfidence: document.querySelector("#eventConfidence"),
@@ -794,23 +806,53 @@ function populateStaticSelects() {
   });
 }
 
+function formatMoney(value) {
+  return `$${value.toFixed(2)}`;
+}
+
+function formatVolume(value) {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
+  return `${(value / 1_000_000).toFixed(1)}M`;
+}
+
+function movingAverage(points, index, length) {
+  const start = Math.max(0, index - length + 1);
+  const window = points.slice(start, index + 1);
+  return window.reduce((sum, point) => sum + point.close, 0) / window.length;
+}
+
 function createPriceSeries(stock) {
   const start = new Date("2025-01-01T00:00:00");
   const end = new Date("2025-09-30T00:00:00");
   const eventMap = new Map(stock.events.map((event) => [event.date, event]));
   const points = [];
-  let price = stock.basePrice;
+  let close = stock.basePrice;
+  let previousClose = close;
   let index = 0;
 
-  for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 5)) {
+  for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+    const day = date.getDay();
+    if (day === 0 || day === 6) continue;
+
     const iso = date.toISOString().slice(0, 10);
     const event = eventMap.get(iso);
-    const cycle = Math.sin(index / 4.6) * 0.011 + Math.cos(index / 8.1) * 0.007;
-    const drift = stock.symbol === "NVDA" ? 0.006 : stock.symbol === "TSLA" ? -0.001 : 0.003;
+    const cycle = Math.sin(index / 3.2) * 0.009 + Math.cos(index / 11.4) * 0.006;
+    const volatility = 0.012 + Math.abs(Math.sin(index / 5.7)) * 0.011;
+    const drift = stock.symbol === "NVDA" ? 0.0028 : stock.symbol === "TSLA" ? -0.0006 : stock.symbol === "JPM" ? 0.0014 : 0.0018;
     const eventShock = event ? event.returns["1d"] / 100 : 0;
-    price = Math.max(20, price * (1 + cycle + drift + eventShock * 0.55));
-    const volume = 1 + Math.abs(cycle) * 18 + (event ? event.volumeAnomaly : Math.max(0.7, 1 + Math.sin(index / 3) * 0.3));
-    points.push({ date: iso, price, volume, event });
+    const overnightGap = Math.sin(index / 2.8) * volatility * 0.38 + eventShock * 0.3;
+    const intradayMove = cycle + drift + eventShock * 0.34;
+    const open = Math.max(8, previousClose * (1 + overnightGap));
+    close = Math.max(8, open * (1 + intradayMove));
+    const high = Math.max(open, close) * (1 + volatility * (0.55 + Math.abs(Math.sin(index / 4.2))));
+    const low = Math.min(open, close) * (1 - volatility * (0.45 + Math.abs(Math.cos(index / 4.9))));
+    const baseVolume = stock.symbol === "NVDA" ? 62_000_000 : stock.symbol === "TSLA" ? 95_000_000 : stock.symbol === "AAPL" ? 54_000_000 : 15_000_000;
+    const volumeMultiplier = 0.75 + Math.abs(cycle) * 18 + Math.abs(close - open) / open * 12 + (event ? event.volumeAnomaly : 0);
+    const volume = Math.round(baseVolume * volumeMultiplier);
+    const returnPct = ((close - previousClose) / previousClose) * 100;
+
+    points.push({ date: iso, open, high, low, close, price: close, previousClose, returnPct, volume, event });
+    previousClose = close;
     index += 1;
   }
 
@@ -823,6 +865,56 @@ function matchEventToPoint(points, eventDate) {
     const pointDistance = Math.abs(new Date(`${point.date}T00:00:00`) - new Date(`${eventDate}T00:00:00`));
     return pointDistance < bestDistance ? point : best;
   }, points[0]);
+}
+
+function renderQuoteStrip(point) {
+  const rangePct = ((point.high - point.low) / point.open) * 100;
+  els.quoteOpen.textContent = formatMoney(point.open);
+  els.quoteHigh.textContent = formatMoney(point.high);
+  els.quoteLow.textContent = formatMoney(point.low);
+  els.quoteClose.textContent = formatMoney(point.close);
+  els.quoteVolume.textContent = formatVolume(point.volume);
+  els.quoteRange.textContent = percent(rangePct);
+  els.quoteClose.className = sentimentClass(point.returnPct);
+  els.quoteRange.className = sentimentClass(point.returnPct);
+}
+
+function getPreviousSignal(stock, selected) {
+  const sorted = [...stock.events].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const index = sorted.findIndex((event) => event.id === selected.id);
+  return index > 0 ? sorted[index - 1] : null;
+}
+
+function renderPreviousSignal(stock, selected) {
+  const previous = getPreviousSignal(stock, selected);
+  if (!previous) {
+    els.previousSignalTitle.textContent = "No prior signal for this ticker";
+    els.previousSignalSummary.textContent = "This is the first tracked market-moving signal in the sample window, so there is no earlier event to compare.";
+    els.previousSignalReturn.textContent = "-";
+    els.previousSignalDelta.textContent = "-";
+    els.previousSignalRelationship.textContent = "First signal";
+    els.chartSignalNote.textContent = "Previous signal: none yet. This is the first tracked signal for the selected ticker in the sample period.";
+    return;
+  }
+
+  const previousReturn = previous.returns[state.selectedWindow];
+  const selectedReturn = selected.returns[state.selectedWindow];
+  const delta = selected.confidence - previous.confidence;
+  const sameDirection = (previousReturn >= 0 && selectedReturn >= 0) || (previousReturn < 0 && selectedReturn < 0);
+  const relationship = sameDirection ? "Confirmed" : "Reversed";
+  const directionText = sameDirection
+    ? "The new headline reinforced the direction of the prior signal."
+    : "The new headline pushed against the previous signal and changed the near-term read.";
+
+  els.previousSignalTitle.textContent = `${previous.type} - ${previous.headline}`;
+  els.previousSignalSummary.textContent = `${dateLabel(previous.date)} prior signal: ${previous.sentiment.toLowerCase()}, ${previous.volumeAnomaly.toFixed(1)}x volume, ${previous.confidence}/100 confidence. ${directionText}`;
+  els.previousSignalReturn.textContent = percent(previousReturn);
+  els.previousSignalReturn.className = sentimentClass(previousReturn);
+  els.previousSignalDelta.textContent = `${delta > 0 ? "+" : ""}${delta} pts`;
+  els.previousSignalDelta.className = sentimentClass(delta);
+  els.previousSignalRelationship.textContent = relationship;
+  els.previousSignalRelationship.className = sameDirection ? "positive" : "negative";
+  els.chartSignalNote.textContent = `Previous signal: ${previous.type} on ${dateLabel(previous.date)} returned ${percent(previousReturn)} over ${state.selectedWindow.toUpperCase()}. Current news ${relationship.toLowerCase()} that read with ${percent(selectedReturn)}.`;
 }
 
 function drawChart(stock, events) {
@@ -838,92 +930,127 @@ function drawChart(stock, events) {
   const points = createPriceSeries(stock);
   state.points = points;
 
-  const pad = { top: 26, right: 24, bottom: 68, left: 58 };
+  const pad = { top: 24, right: 74, bottom: 72, left: 18 };
   const chartWidth = cssWidth - pad.left - pad.right;
-  const chartHeight = cssHeight - pad.top - pad.bottom;
-  const prices = points.map((point) => point.price);
-  const minPrice = Math.min(...prices) * 0.96;
-  const maxPrice = Math.max(...prices) * 1.04;
+  const priceHeight = Math.max(220, Math.round((cssHeight - pad.top - pad.bottom) * 0.76));
+  const volumeTop = pad.top + priceHeight + 18;
+  const volumeHeight = cssHeight - volumeTop - pad.bottom + 36;
+  const lows = points.map((point) => point.low);
+  const highs = points.map((point) => point.high);
+  const minPrice = Math.min(...lows) * 0.992;
+  const maxPrice = Math.max(...highs) * 1.008;
   const maxVolume = Math.max(...points.map((point) => point.volume));
 
   const xFor = (index) => pad.left + (index / (points.length - 1)) * chartWidth;
-  const yFor = (price) => pad.top + (1 - (price - minPrice) / (maxPrice - minPrice)) * chartHeight;
-  const volumeY = cssHeight - pad.bottom + 45;
+  const yFor = (price) => pad.top + (1 - (price - minPrice) / (maxPrice - minPrice)) * priceHeight;
+  const volumeY = volumeTop + volumeHeight;
+  const candleWidth = Math.max(2, Math.min(7, (chartWidth / points.length) * 0.62));
 
   ctx.clearRect(0, 0, cssWidth, cssHeight);
   ctx.fillStyle = "#fbfcfe";
   ctx.fillRect(0, 0, cssWidth, cssHeight);
 
-  ctx.strokeStyle = "#e6ebf2";
   ctx.lineWidth = 1;
-  ctx.fillStyle = "#64748b";
   ctx.font = "12px Inter, system-ui, sans-serif";
 
-  for (let i = 0; i <= 4; i += 1) {
-    const y = pad.top + (i / 4) * chartHeight;
-    const value = maxPrice - (i / 4) * (maxPrice - minPrice);
+  for (let i = 0; i <= 6; i += 1) {
+    const y = pad.top + (i / 6) * priceHeight;
+    const priceValue = maxPrice - (i / 6) * (maxPrice - minPrice);
+    ctx.strokeStyle = i === 6 ? "#cbd5e1" : "#e6ebf2";
     ctx.beginPath();
     ctx.moveTo(pad.left, y);
     ctx.lineTo(cssWidth - pad.right, y);
     ctx.stroke();
-    ctx.fillText(`$${value.toFixed(0)}`, 10, y + 4);
+    ctx.fillStyle = "#64748b";
+    ctx.fillText(formatMoney(priceValue), cssWidth - pad.right + 9, y + 4);
   }
+
+  ctx.strokeStyle = "#d8dee8";
+  ctx.beginPath();
+  ctx.moveTo(cssWidth - pad.right, pad.top);
+  ctx.lineTo(cssWidth - pad.right, volumeY);
+  ctx.stroke();
 
   points.forEach((point, index) => {
     const x = xFor(index);
-    const height = (point.volume / maxVolume) * 42;
-    ctx.fillStyle = "rgba(15, 118, 110, 0.22)";
-    ctx.fillRect(x - 2, volumeY - height, 4, height);
+    const isUp = point.close >= point.open;
+    const volumeHeightForPoint = (point.volume / maxVolume) * volumeHeight;
+    ctx.fillStyle = isUp ? "rgba(21, 128, 61, 0.22)" : "rgba(180, 35, 24, 0.22)";
+    ctx.fillRect(x - candleWidth / 2, volumeY - volumeHeightForPoint, candleWidth, volumeHeightForPoint);
+  });
+
+  points.forEach((point, index) => {
+    const x = xFor(index);
+    const isUp = point.close >= point.open;
+    const highY = yFor(point.high);
+    const lowY = yFor(point.low);
+    const openY = yFor(point.open);
+    const closeY = yFor(point.close);
+    const bodyTop = Math.min(openY, closeY);
+    const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
+    ctx.strokeStyle = isUp ? "#15803d" : "#b42318";
+    ctx.fillStyle = isUp ? "#15803d" : "#b42318";
+    ctx.beginPath();
+    ctx.moveTo(x, highY);
+    ctx.lineTo(x, lowY);
+    ctx.stroke();
+    ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
   });
 
   ctx.beginPath();
   points.forEach((point, index) => {
     const x = xFor(index);
-    const y = yFor(point.price);
+    const y = yFor(movingAverage(points, index, 20));
     if (index === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   });
-  ctx.strokeStyle = stock.chartColor;
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#2563eb";
+  ctx.lineWidth = 1.8;
   ctx.stroke();
 
-  ctx.lineTo(cssWidth - pad.right, cssHeight - pad.bottom);
-  ctx.lineTo(pad.left, cssHeight - pad.bottom);
-  ctx.closePath();
-  const gradient = ctx.createLinearGradient(0, pad.top, 0, cssHeight - pad.bottom);
-  gradient.addColorStop(0, `${stock.chartColor}26`);
-  gradient.addColorStop(1, `${stock.chartColor}00`);
-  ctx.fillStyle = gradient;
-  ctx.fill();
-
   points.forEach((point, index) => {
-    if (index % 12 !== 0) return;
+    if (index % 22 !== 0) return;
     ctx.fillStyle = "#64748b";
-    ctx.fillText(point.date.slice(5), xFor(index) - 14, cssHeight - 22);
+    ctx.fillText(point.date.slice(5), xFor(index) - 13, cssHeight - 20);
   });
 
   events.forEach((event) => {
     const point = matchEventToPoint(points, event.date);
     const index = points.indexOf(point);
     const x = xFor(index);
-    const y = yFor(point.price);
+    const y = yFor(point.high);
     const isSelected = event.id === state.selectedEventId;
     ctx.beginPath();
     ctx.moveTo(x, pad.top);
-    ctx.lineTo(x, cssHeight - pad.bottom);
+    ctx.lineTo(x, volumeY);
     ctx.strokeStyle = isSelected ? "#111827" : "#cbd5e1";
     ctx.setLineDash([4, 5]);
     ctx.stroke();
     ctx.setLineDash([]);
 
     ctx.beginPath();
-    ctx.arc(x, y, isSelected ? 8 : 6, 0, Math.PI * 2);
+    ctx.moveTo(x, y - (isSelected ? 18 : 14));
+    ctx.lineTo(x - (isSelected ? 8 : 6), y - 4);
+    ctx.lineTo(x + (isSelected ? 8 : 6), y - 4);
+    ctx.closePath();
     ctx.fillStyle = event.sentiment === "Positive" ? "#15803d" : event.sentiment === "Negative" ? "#b42318" : "#b45309";
     ctx.fill();
-    ctx.lineWidth = isSelected ? 4 : 2;
+    ctx.lineWidth = isSelected ? 3 : 1.5;
     ctx.strokeStyle = "#ffffff";
     ctx.stroke();
   });
+
+  const selectedEvent = getSelectedEvent(stock);
+  const selectedPoint = matchEventToPoint(points, selectedEvent.date);
+  renderQuoteStrip(selectedPoint);
+
+  ctx.fillStyle = "#14213d";
+  ctx.font = "700 12px Inter, system-ui, sans-serif";
+  ctx.fillText("MA20", pad.left + 6, pad.top + 14);
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(pad.left + 43, pad.top + 7, 26, 3);
+  ctx.fillStyle = "#64748b";
+  ctx.fillText(`Volume max ${formatVolume(maxVolume)}`, pad.left + 6, volumeTop + 14);
 }
 
 function renderTickers() {
@@ -1113,6 +1240,7 @@ function render() {
     drawChart(stock, events);
   }
   renderEventDetail(selected);
+  renderPreviousSignal(stock, selected);
   renderEvents(events);
   renderSimilarEvents(selected, similar);
   renderDashboardSystem();

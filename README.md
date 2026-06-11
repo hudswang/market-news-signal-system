@@ -24,8 +24,10 @@ Any free port works; use a different number if `4182` is already occupied.
 
 - Ticker dashboard for NVDA, AAPL, TSLA, and JPM.
 - Price and volume chart with clickable news event markers.
+- Professional OHLC candlestick chart with exact open, high, low, close, volume, range, 20-period moving average, and news signal markers.
 - Event impact windows for 1D, 3D, 7D, and 30D returns.
 - Sentiment, event type, surprise level, volume anomaly, and confidence signals.
+- Previous-signal analysis showing the prior event, prior return, confidence delta, and whether the new headline confirmed or reversed the earlier signal.
 - Similar-event comparison for recurring event patterns.
 - Dense desktop layout with responsive mobile behavior.
 - Multi-view market news interface with Dashboard, News Feed, Watchlists, Alerts, Economic Calendar, SEC Filings, and Sources/Admin pages.
