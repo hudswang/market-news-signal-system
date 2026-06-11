@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Market News Signal System</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Ticker navigation">
+        <div class="brand">
+          <span class="brand-mark">MN</span>
+          <div>
+            <h1>Market News Signal System</h1>
+            <p>News-linked stock reaction research</p>
+          </div>
+        </div>
+
+        <label class="field-label" for="tickerSearch">Ticker</label>
+        <input id="tickerSearch" class="search-input" type="search" placeholder="Search ticker or company" autocomplete="off" />
+
+        <div id="tickerList" class="ticker-list" role="listbox" aria-label="Stocks"></div>
+
+        <div class="sidebar-block">
+          <span class="block-title">Event Filters</span>
+          <label class="field-label" for="eventTypeFilter">Type</label>
+          <select id="eventTypeFilter" class="select-input">
+            <option value="All">All events</option>
+            <option value="Earnings">Earnings</option>
+            <option value="Product">Product</option>
+            <option value="Macro">Macro</option>
+            <option value="Analyst">Analyst</option>
+            <option value="Legal">Legal</option>
+            <option value="Regulatory">Regulatory</option>
+          </select>
+
+          <label class="toggle-row">
+            <input id="bullishOnly" type="checkbox" />
+            <span>Bullish or neutral only</span>
+          </label>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p id="marketRegime" class="eyebrow">Market regime</p>
+            <h2 id="stockTitle">Ticker</h2>
+          </div>
+          <div class="toolbar" aria-label="Analysis controls">
+            <div class="segmented" role="group" aria-label="Return window">
+              <button class="segment is-active" data-window="1d" type="button">1D</button>
+              <button class="segment" data-window="3d" type="button">3D</button>
+              <button class="segment" data-window="7d" type="button">7D</button>
+              <button class="segment" data-window="30d" type="button">30D</button>
+            </div>
+            <button id="exportButton" class="export-button" type="button" title="Export selected analysis">Export</button>
+          </div>
+        </header>
+
+        <section class="metrics-grid" aria-label="Stock summary metrics">
+          <article class="metric">
+            <span>Selected Event Return</span>
+            <strong id="selectedReturn">0.0%</strong>
+            <small id="selectedReturnLabel">1D associated reaction</small>
+          </article>
+          <article class="metric">
+            <span>Signal Strength</span>
+            <strong id="signalStrength">0/100</strong>
+            <small id="signalStrengthLabel">Composite score</small>
+          </article>
+          <article class="metric">
+            <span>Volume Anomaly</span>
+            <strong id="volumeAnomaly">0.0x</strong>
+            <small>Compared with recent average</small>
+          </article>
+          <article class="metric">
+            <span>Similar Events</span>
+            <strong id="similarCount">0</strong>
+            <small id="similarSummary">Pattern sample</small>
+          </article>
+        </section>
+
+        <section class="analysis-layout">
+          <div class="chart-panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Price, Volume, And News Markers</h3>
+                <p id="chartSubtitle">Click a marker or event to inspect the reaction window.</p>
+              </div>
+              <span id="selectedDate" class="date-pill">Date</span>
+            </div>
+            <canvas id="priceChart" width="1180" height="560" aria-label="Price chart with market news markers"></canvas>
+          </div>
+
+          <aside class="detail-panel" aria-label="Selected news event">
+            <div class="panel-heading compact">
+              <div>
+                <h3>Event Detail</h3>
+                <p id="eventSource">Source</p>
+              </div>
+              <span id="sentimentPill" class="sentiment-pill">Neutral</span>
+            </div>
+            <h4 id="eventHeadline">Select an event</h4>
+            <p id="eventSummary" class="event-summary"></p>
+            <dl class="signal-list">
+              <div>
+                <dt>Type</dt>
+                <dd id="eventType">-</dd>
+              </div>
+              <div>
+                <dt>Surprise</dt>
+                <dd id="eventSurprise">-</dd>
+              </div>
+              <div>
+                <dt>Confidence</dt>
+                <dd id="eventConfidence">-</dd>
+              </div>
+              <div>
+                <dt>Risk Note</dt>
+                <dd id="eventRisk">-</dd>
+              </div>
+            </dl>
+            <div class="reaction-table-wrap">
+              <table class="reaction-table">
+                <thead>
+                  <tr>
+                    <th>Window</th>
+                    <th>Reaction</th>
+                  </tr>
+                </thead>
+                <tbody id="reactionRows"></tbody>
+              </table>
+            </div>
+          </aside>
+        </section>
+
+        <section class="lower-grid">
+          <div class="events-panel">
+            <div class="panel-heading">
+              <div>
+                <h3>News Timeline</h3>
+                <p id="eventCount">0 events</p>
+              </div>
+            </div>
+            <div id="eventList" class="event-list"></div>
+          </div>
+
+          <div class="similar-panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Similar Event Pattern</h3>
+                <p id="similarPatternLabel">Matched by type and sentiment</p>
+              </div>
+            </div>
+            <div id="similarEvents" class="similar-events"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="src/app.js?v=2"></script>
+  </body>
+</html>
