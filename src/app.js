@@ -243,7 +243,9 @@ const newsSources = [
   { name: "Analyst Desk", category: "Research", reliability: 76, enabled: true },
   { name: "Regulatory Filing", category: "Regulatory", reliability: 90, enabled: true },
   { name: "Macro Desk", category: "Macro", reliability: 82, enabled: true },
-  { name: "Legal Wire", category: "Legal", reliability: 73, enabled: true }
+  { name: "Legal Wire", category: "Legal", reliability: 73, enabled: true },
+  { name: "GDELT Live Search", category: "Live News", reliability: 70, enabled: true },
+  { name: "Google News RSS", category: "Live News", reliability: 68, enabled: true }
 ];
 
 const watchlists = [
@@ -257,6 +259,8 @@ const alertRules = [
   { id: "alert-2", ticker: "TSLA", type: "Negative sentiment", threshold: 65, active: true },
   { id: "alert-3", ticker: "JPM", type: "SEC filing", threshold: 70, active: false }
 ];
+
+const LIVE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 const economicEvents = [
   {
@@ -338,15 +342,16 @@ const filings = [
 
 const coverage = [
   { label: "User authentication", status: "missing", note: "Not in the static MVP. Needs JWT backend, protected routes, and profile endpoint." },
-  { label: "Market news feed", status: "done", note: "Implemented as a searchable/filterable mock feed with article cards, summaries, sentiment, categories, sources, and impact." },
+  { label: "Market news feed", status: "done", note: "Implemented as a searchable/filterable feed with historical signal records plus live GDELT article refresh where the browser can reach the public API." },
   { label: "Watchlists", status: "done", note: "Implemented multiple mock watchlists with add/remove ticker controls and watchlist news filtering." },
   { label: "Alerts", status: "done", note: "Implemented mock alert rules and rule evaluation against article impact/sentiment/filing-style events." },
   { label: "AI summaries", status: "done", note: "Implemented mock bullet summaries, why-it-matters, and possible-impact fields." },
   { label: "Sentiment analysis", status: "done", note: "Implemented mock sentiment label and -1 to 1 score per article." },
-  { label: "Impact dashboard", status: "done", note: "Implemented ticker trends, breaking signals, sentiment, news volume, watchlist news, previous-signal analysis, and the professional reaction chart." },
+  { label: "Impact dashboard", status: "done", note: "Implemented ticker trends, breaking signals, sentiment, news volume, watchlist news, previous-signal analysis, chart hover signal tooltips, and the professional reaction chart." },
   { label: "Economic calendar", status: "done", note: "Implemented CPI, jobs, Fed, GDP-style, and earnings events using mock data." },
   { label: "SEC filings", status: "done", note: "Implemented mock filing list by ticker with type, company, date, URL, and summary." },
   { label: "Admin/source management", status: "done", note: "Implemented source reliability/category/enabled display." },
+  { label: "Live refresh logic", status: "partial", note: "Implemented client-side refresh and five-minute polling using public live-news search. Completed live return windows still need a real price data provider." },
   { label: "REST API", status: "partial", note: "Documented in UI only. A real Express API is not created yet." },
   { label: "Database schema", status: "partial", note: "Models are represented by frontend mock data. Prisma/PostgreSQL is not created yet." },
   { label: "Background jobs", status: "partial", note: "Mock producer/evaluator behavior exists in the frontend. BullMQ/Redis jobs are not created yet." },
@@ -366,7 +371,12 @@ const state = {
   newsSentiment: "All",
   newsCategory: "All",
   newsSource: "All",
-  selectedWatchlistId: "wl-ai"
+  selectedWatchlistId: "wl-ai",
+  liveArticles: [],
+  liveStatus: "Live refresh idle",
+  lastRefreshAt: null,
+  refreshInFlight: false,
+  chartMeta: null
 };
 
 const els = {
@@ -448,7 +458,10 @@ const els = {
   newsModalTitle: document.querySelector("#newsModalTitle"),
   newsModalMeta: document.querySelector("#newsModalMeta"),
   newsModalBody: document.querySelector("#newsModalBody"),
-  newsModalClose: document.querySelector("#newsModalClose")
+  newsModalClose: document.querySelector("#newsModalClose"),
+  refreshNewsButton: document.querySelector("#refreshNewsButton"),
+  liveStatus: document.querySelector("#liveStatus"),
+  chartTooltip: document.querySelector("#chartTooltip")
 };
 
 function getStock() {
@@ -482,8 +495,180 @@ function dateLabel(value) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`));
 }
 
+function timeLabel(value) {
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(value);
+}
+
+function hashString(value) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function parseGdeltDate(value) {
+  if (!value || value.length < 14) return new Date();
+  const year = value.slice(0, 4);
+  const month = value.slice(4, 6);
+  const day = value.slice(6, 8);
+  const hour = value.slice(8, 10);
+  const minute = value.slice(10, 12);
+  const second = value.slice(12, 14);
+  return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}Z`);
+}
+
+function inferSentiment(title) {
+  const text = title.toLowerCase();
+  const positiveWords = ["beat", "beats", "raise", "raised", "growth", "surge", "rally", "strong", "upgrade", "record", "wins", "optimism"];
+  const negativeWords = ["miss", "cuts", "probe", "lawsuit", "falls", "drop", "weak", "warning", "downgrade", "risk", "delay", "scrutiny"];
+  const positiveScore = positiveWords.filter((word) => text.includes(word)).length;
+  const negativeScore = negativeWords.filter((word) => text.includes(word)).length;
+  if (positiveScore > negativeScore) return { label: "Positive", score: Math.min(0.82, 0.38 + positiveScore * 0.12) };
+  if (negativeScore > positiveScore) return { label: "Negative", score: -Math.min(0.82, 0.38 + negativeScore * 0.12) };
+  return { label: "Neutral", score: 0 };
+}
+
+function inferCategory(title) {
+  const text = title.toLowerCase();
+  if (text.includes("earnings") || text.includes("revenue") || text.includes("profit")) return "Earnings";
+  if (text.includes("sec") || text.includes("regulator") || text.includes("regulatory") || text.includes("probe")) return "Regulatory";
+  if (text.includes("fed") || text.includes("inflation") || text.includes("rates") || text.includes("jobs")) return "Macro";
+  if (text.includes("launch") || text.includes("product") || text.includes("ai") || text.includes("chip")) return "Product";
+  if (text.includes("analyst") || text.includes("upgrade") || text.includes("downgrade") || text.includes("price target")) return "Analyst";
+  if (text.includes("lawsuit") || text.includes("court") || text.includes("legal")) return "Legal";
+  return "Market";
+}
+
+function buildLiveNewsQuery(stock) {
+  const companyCore = stock.name.replace(/\b(Corp\.|Inc\.|Co\.|Corporation|Chase|&)\b/g, "").trim();
+  return `("${stock.symbol}" OR "${companyCore}") (stock OR shares OR earnings OR market OR revenue OR outlook)`;
+}
+
+function liveNewsUrl(stock) {
+  const params = new URLSearchParams({
+    query: buildLiveNewsQuery(stock),
+    mode: "ArtList",
+    format: "json",
+    maxrecords: "8",
+    sort: "HybridRel"
+  });
+  return `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
+}
+
+function sameOriginLiveNewsUrl(stock) {
+  const params = new URLSearchParams({
+    symbol: stock.symbol,
+    name: stock.name
+  });
+  return `/api/live-news?${params.toString()}`;
+}
+
+function sameOriginCombinedLiveNewsUrl() {
+  return "/api/live-news";
+}
+
+function matchLiveArticleStock(item) {
+  if (item.matchedSymbol) return stocks.find((stock) => stock.symbol === item.matchedSymbol);
+  const text = [item.title, item.description, item.url].filter(Boolean).join(" ").toLowerCase();
+  return stocks.find((stock) => {
+    const aliases = [stock.symbol, stock.name.split(" ")[0], stock.name.replace(/\b(Corp\.|Inc\.|Co\.|Corporation|Chase|&)\b/g, "").trim()];
+    return aliases.some((alias) => alias && text.includes(alias.toLowerCase()));
+  });
+}
+
+function normalizeLiveArticle(stock, item) {
+  const title = item.title || `${stock.symbol} market news update`;
+  const published = item.pubDate ? new Date(item.pubDate) : parseGdeltDate(item.seendate || item.seendateutc || "");
+  const sentiment = inferSentiment(title);
+  const category = inferCategory(title);
+  const absoluteScore = Math.abs(sentiment.score);
+  const confidence = Math.round(58 + absoluteScore * 34);
+  const impactLevel = confidence >= 78 ? "High" : confidence >= 66 ? "Medium" : "Low";
+
+  return {
+    id: `live-${stock.symbol}-${hashString(item.url || title)}`,
+    title,
+    source: item.domain || "GDELT Live Search",
+    url: item.url || "https://www.gdeltproject.org/",
+    publishedTime: timeLabel(published),
+    publishedMs: published.getTime(),
+    tickers: [stock.symbol],
+    company: stock.name,
+    sector: stock.sector,
+    summary: item.description || `Live article matched to ${stock.symbol}. The app can monitor it now and measure price reaction as market data becomes available.`,
+    sentimentLabel: sentiment.label,
+    sentimentScore: sentiment.score,
+    category,
+    impactLevel,
+    whyItMatters: `This live article matters because ${stock.symbol} is currently analyzed around ${stock.regime.toLowerCase()}.`,
+    possibleImpact:
+      "Live article queued for impact analysis. Completed 1D, 3D, 7D, and 30D reactions require price data after the article timestamp.",
+    bullets: [
+      `Live source matched this article to ${stock.symbol} from ${item.domain || "GDELT"}.`,
+      `Signal classifier tagged it as ${sentiment.label.toLowerCase()} ${category.toLowerCase()} news with ${confidence}/100 confidence.`,
+      "Impact windows are pending until the app observes post-news price data."
+    ],
+    returns: { "1d": 0, "3d": 0, "7d": 0, "30d": 0 },
+    confidence,
+    volumeAnomaly: 1 + absoluteScore,
+    isLive: true
+  };
+}
+
+async function fetchLiveArticlesForStock(stock) {
+  const urls = [sameOriginLiveNewsUrl(stock), liveNewsUrl(stock)];
+  for (const url of urls) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) continue;
+      const payload = await response.json();
+      const articles = (payload.articles || []).map((item) => normalizeLiveArticle(stock, item));
+      if (articles.length) return articles;
+    } catch {
+      continue;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+  return [];
+}
+
+async function fetchLiveArticles() {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(sameOriginCombinedLiveNewsUrl(), { signal: controller.signal });
+    if (!response.ok) return [];
+    const payload = await response.json();
+    return (payload.articles || [])
+      .map((item) => {
+        const stock = matchLiveArticleStock(item);
+        return stock ? normalizeLiveArticle(stock, item) : null;
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+function dedupeArticles(articles) {
+  const seen = new Set();
+  return articles.filter((article) => {
+    const key = article.url || article.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function getAllArticles() {
-  return stocks
+  const historicalArticles = stocks
     .flatMap((stock) =>
       stock.events.map((event, index) => ({
         id: `article-${event.id}`,
@@ -512,6 +697,12 @@ function getAllArticles() {
       }))
     )
     .sort((a, b) => new Date(b.publishedTime.slice(0, 10)) - new Date(a.publishedTime.slice(0, 10)));
+
+  return dedupeArticles([...state.liveArticles, ...historicalArticles]).sort((a, b) => {
+    const aTime = a.publishedMs ?? new Date(a.publishedTime.slice(0, 10)).getTime();
+    const bTime = b.publishedMs ?? new Date(b.publishedTime.slice(0, 10)).getTime();
+    return bTime - aTime;
+  });
 }
 
 function activeWatchlist() {
@@ -549,7 +740,9 @@ function articleEventId(article) {
 
 function findArticleContext(article) {
   const eventId = articleEventId(article);
-  const stock = stocks.find((item) => item.events.some((event) => event.id === eventId));
+  const stock =
+    stocks.find((item) => item.events.some((event) => event.id === eventId)) ||
+    stocks.find((item) => article.tickers.includes(item.symbol));
   const event = stock?.events.find((item) => item.id === eventId);
   return { stock, event };
 }
@@ -571,12 +764,24 @@ function renderReturnRows(returns) {
     .join("");
 }
 
+function renderArticleReturnRows(article) {
+  if (article.isLive) {
+    return `
+      <tr>
+        <td>1D/3D/7D/30D</td>
+        <td>Pending price observation</td>
+      </tr>
+    `;
+  }
+  return renderReturnRows(article.returns);
+}
+
 function renderPreviousSignalBrief(stock, event) {
   if (!stock || !event) {
     return `
       <section class="detail-section">
         <h4>Previous Signal Impact</h4>
-        <p>No linked signal was found for this article.</p>
+        <p>This live article is not yet linked to a completed price-reaction window. It will become a measured signal after post-news price data is available.</p>
       </section>
     `;
   }
@@ -624,6 +829,8 @@ function renderPreviousSignalBrief(stock, event) {
 function openNewsModal(article) {
   const { stock, event } = findArticleContext(article);
   const currentReturn = event?.returns[state.selectedWindow] ?? article.returns[state.selectedWindow];
+  const reactionText = article.isLive ? "Pending" : percent(currentReturn);
+  const reactionClass = article.isLive ? "neutral" : sentimentClass(currentReturn);
 
   els.newsModalTitle.textContent = article.title;
   els.newsModalMeta.textContent = `${article.source} - ${article.publishedTime} - ${article.tickers.join(", ")}`;
@@ -655,7 +862,7 @@ function openNewsModal(article) {
         </div>
         <div>
           <span>${state.selectedWindow.toUpperCase()} Reaction</span>
-          <strong class="${sentimentClass(currentReturn)}">${percent(currentReturn)}</strong>
+          <strong class="${reactionClass}">${reactionText}</strong>
         </div>
         <div>
           <span>Category</span>
@@ -688,14 +895,14 @@ function openNewsModal(article) {
             <th>Associated Reaction</th>
           </tr>
         </thead>
-        <tbody>${renderReturnRows(article.returns)}</tbody>
+        <tbody>${renderArticleReturnRows(article)}</tbody>
       </table>
     </section>
 
     <section class="detail-section">
       <h4>Source</h4>
-      <p>${article.source} source reliability is shown in Sources/Admin. This mock article is a sample record for product testing.</p>
-      <a href="${article.url}" target="_blank" rel="noreferrer">Open mock source URL</a>
+      <p>${article.source} source reliability is shown in Sources/Admin. ${article.isLive ? "This is a live fetched article candidate." : "This mock article is a sample record for product testing."}</p>
+      <a href="${article.url}" target="_blank" rel="noreferrer">${article.isLive ? "Open live source URL" : "Open mock source URL"}</a>
     </section>
   `;
 
@@ -810,7 +1017,7 @@ function renderMiniList(container, articles) {
     item.className = "mini-item";
     item.innerHTML = `
       <strong>${article.tickers.join(", ")} - ${article.title}</strong>
-      <span>${article.source} - ${article.impactLevel} impact - ${article.sentimentLabel}</span>
+      <span>${article.source} - ${article.isLive ? "live candidate" : `${article.impactLevel} impact`} - ${article.sentimentLabel}</span>
     `;
     makeArticleOpenable(item, article);
     container.appendChild(item);
@@ -837,7 +1044,7 @@ function renderNewsFeed() {
       </div>
       <div class="news-card-footer">
         <span class="news-meta">${article.sector}</span>
-        <span class="news-meta">Open full impact brief</span>
+        <span class="news-meta">${article.isLive ? "Live impact pending" : "Open full impact brief"}</span>
       </div>
     `;
     makeArticleOpenable(card, article);
@@ -969,6 +1176,30 @@ function renderSources() {
     `;
     els.coverageList.appendChild(row);
   });
+}
+
+function renderLiveStatus() {
+  els.liveStatus.textContent = state.liveStatus;
+  els.refreshNewsButton.disabled = state.refreshInFlight;
+  els.refreshNewsButton.textContent = state.refreshInFlight ? "Refreshing..." : "Refresh News";
+}
+
+async function refreshLiveNews() {
+  if (state.refreshInFlight) return;
+  state.refreshInFlight = true;
+  state.liveStatus = "Refreshing live news";
+  renderLiveStatus();
+
+  const combinedArticles = await fetchLiveArticles();
+  const fallbackArticles = combinedArticles.length ? [] : (await fetchLiveArticlesForStock(getStock())).slice(0, 8);
+  const articles = dedupeArticles([...combinedArticles, ...fallbackArticles]).slice(0, 24);
+  state.liveArticles = articles;
+  state.lastRefreshAt = new Date();
+  state.refreshInFlight = false;
+  state.liveStatus = articles.length
+    ? `Live: ${articles.length} articles at ${timeLabel(state.lastRefreshAt)}`
+    : `Live unavailable at ${timeLabel(state.lastRefreshAt)}`;
+  render();
 }
 
 function populateStaticSelects() {
@@ -1197,11 +1428,23 @@ function drawChart(stock, events) {
     ctx.fillText(point.date.slice(5), xFor(index) - 13, cssHeight - 20);
   });
 
-  events.forEach((event) => {
+  const markers = events.map((event) => {
     const point = matchEventToPoint(points, event.date);
     const index = points.indexOf(point);
     const x = xFor(index);
     const y = yFor(point.high);
+    return { event, point, index, x, y };
+  });
+
+  state.chartMeta = {
+    pad,
+    chartWidth,
+    points,
+    markers,
+    volumeY
+  };
+
+  markers.forEach(({ event, x, y }) => {
     const isSelected = event.id === state.selectedEventId;
     ctx.beginPath();
     ctx.moveTo(x, pad.top);
@@ -1384,27 +1627,78 @@ function downloadAnalysis(stock, selected) {
   URL.revokeObjectURL(url);
 }
 
-function handleCanvasClick(event) {
-  const stock = getStock();
-  const events = getEvents(stock);
+function resolveChartHover(event) {
+  if (!state.chartMeta) return null;
   const rect = els.priceChart.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const points = state.points.length ? state.points : createPriceSeries(stock);
-  const padLeft = 58;
-  const padRight = 24;
-  const chartWidth = rect.width - padLeft - padRight;
-
-  const hit = events
-    .map((news) => {
-      const point = matchEventToPoint(points, news.date);
-      const index = points.indexOf(point);
-      const markerX = padLeft + (index / (points.length - 1)) * chartWidth;
-      return { news, distance: Math.abs(markerX - x) };
-    })
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
+  const { pad, chartWidth, points, markers } = state.chartMeta;
+  const rawIndex = Math.round(((mouseX - pad.left) / chartWidth) * (points.length - 1));
+  const pointIndex = Math.max(0, Math.min(points.length - 1, rawIndex));
+  const point = points[pointIndex];
+  const nearestMarker = markers
+    .map((marker) => ({
+      ...marker,
+      distance: Math.hypot(marker.x - mouseX, marker.y - mouseY),
+      xDistance: Math.abs(marker.x - mouseX)
+    }))
     .sort((a, b) => a.distance - b.distance)[0];
+  const eventHit = nearestMarker && (nearestMarker.distance < 34 || nearestMarker.xDistance < 12) ? nearestMarker.event : point.event;
+  return { point, event: eventHit, mouseX, mouseY };
+}
 
-  if (hit && hit.distance < 22) {
-    state.selectedEventId = hit.news.id;
+function showChartTooltip(event) {
+  const hover = resolveChartHover(event);
+  if (!hover) return;
+
+  const { point, event: signal } = hover;
+  renderQuoteStrip(point);
+  els.selectedDate.textContent = dateLabel(point.date);
+  const panelRect = els.priceChart.parentElement.getBoundingClientRect();
+  const returnText = signal ? percent(signal.returns[state.selectedWindow]) : "No signal";
+  const returnClass = signal ? sentimentClass(signal.returns[state.selectedWindow]) : "neutral";
+
+  els.chartTooltip.innerHTML = `
+    <div class="tooltip-row">
+      <span>${dateLabel(point.date)}</span>
+      <strong class="${sentimentClass(point.returnPct)}">${percent(point.returnPct)}</strong>
+    </div>
+    <div class="tooltip-grid">
+      <span>O ${formatMoney(point.open)}</span>
+      <span>H ${formatMoney(point.high)}</span>
+      <span>L ${formatMoney(point.low)}</span>
+      <span>C ${formatMoney(point.close)}</span>
+    </div>
+    <div class="tooltip-signal">
+      <span>${signal ? `${signal.type} signal` : "No news signal"}</span>
+      <strong>${signal ? signal.headline : "Hover a marker for linked news"}</strong>
+      <small>${signal ? `${signal.source} - ${signal.sentiment} - ${state.selectedWindow.toUpperCase()} ${returnText}` : "This candle has price action but no matched article in the sample set."}</small>
+    </div>
+  `;
+  els.chartTooltip.hidden = false;
+  const maxLeft = Math.max(10, panelRect.width - 330);
+  const maxTop = Math.max(10, panelRect.height - 170);
+  const left = Math.min(Math.max(event.clientX - panelRect.left + 14, 10), maxLeft);
+  const top = Math.min(Math.max(event.clientY - panelRect.top + 14, 10), maxTop);
+  els.chartTooltip.style.left = `${left}px`;
+  els.chartTooltip.style.top = `${top}px`;
+  els.chartTooltip.dataset.returnClass = returnClass;
+}
+
+function hideChartTooltip() {
+  els.chartTooltip.hidden = true;
+  const stock = getStock();
+  const selectedEvent = getSelectedEvent(stock);
+  const points = state.points.length ? state.points : createPriceSeries(stock);
+  const selectedPoint = matchEventToPoint(points, selectedEvent.date);
+  renderQuoteStrip(selectedPoint);
+  els.selectedDate.textContent = dateLabel(selectedEvent.date);
+}
+
+function handleCanvasClick(event) {
+  const hover = resolveChartHover(event);
+  if (hover?.event) {
+    state.selectedEventId = hover.event.id;
     render();
   }
 }
@@ -1437,6 +1731,7 @@ function render() {
   renderCalendar();
   renderFilings();
   renderSources();
+  renderLiveStatus();
 }
 
 els.tickerSearch.addEventListener("input", renderTickers);
@@ -1511,6 +1806,9 @@ els.alertForm.addEventListener("submit", (event) => {
   render();
 });
 els.priceChart.addEventListener("click", handleCanvasClick);
+els.priceChart.addEventListener("mousemove", showChartTooltip);
+els.priceChart.addEventListener("mouseleave", hideChartTooltip);
+els.refreshNewsButton.addEventListener("click", refreshLiveNews);
 els.exportButton.addEventListener("click", () => downloadAnalysis(getStock(), getSelectedEvent()));
 els.newsModalClose.addEventListener("click", closeNewsModal);
 els.newsModal.addEventListener("click", (event) => {
@@ -1526,3 +1824,5 @@ window.addEventListener("keydown", (event) => {
 window.addEventListener("resize", render);
 
 render();
+refreshLiveNews();
+window.setInterval(refreshLiveNews, LIVE_REFRESH_INTERVAL_MS);

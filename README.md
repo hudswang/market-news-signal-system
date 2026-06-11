@@ -6,7 +6,19 @@ The app lets you choose a ticker, inspect a professional OHLC price chart, overl
 
 ## Run Locally
 
-The original static preview has no build step.
+Use the local Node server when you want live news refresh, because it serves the static app and proxies public live-news requests from the same origin.
+
+```bash
+npm start
+```
+
+Then open:
+
+```text
+http://127.0.0.1:4182/
+```
+
+The original static preview still has no build step, but direct browser calls to live news providers may be blocked in some environments.
 
 ```bash
 python3 -m http.server 4182
@@ -106,6 +118,8 @@ The API uses mock provider adapters by default, so the app runs without paid dat
 - Multi-view stock-impact interface with Impact Dashboard, Signal Feed, Watchlists, Alerts, Economic Calendar, SEC Filings, and Sources/Admin pages.
 - Mock market news feed with article cards, source, URL, published time, tickers, AI-style bullets, summary, sentiment score, category, impact level, why-it-matters, and possible-impact fields.
 - Clickable news detail drawer for opening a full impact brief with AI summary bullets, signal telemetry, prior-signal comparison, and 1D/3D/7D/30D reaction table.
+- Live news refresh button and five-minute background polling through the local server, using public GDELT article search with a Google News RSS fallback, merged into the stock signal feed as live impact candidates.
+- Professional chart hover tooltip that updates OHLC values and shows the news signal linked to hovered price markers.
 - Search and filters for ticker, source, category, and sentiment.
 - Watchlist management UI with multiple watchlists, add/remove ticker controls, and watchlist-specific news.
 - Alert rule UI for breaking news, negative sentiment, high-impact events, earnings news, SEC filings, and unusual news volume.
@@ -118,6 +132,7 @@ The API uses mock provider adapters by default, so the app runs without paid dat
 Covered in this static MVP:
 
 - Stock news impact feed
+- Live article refresh from public no-key news search sources through the local server
 - Ticker filtering
 - Watchlists
 - Alerts UI and mock rule evaluation
@@ -132,6 +147,7 @@ Covered in this static MVP:
 
 Not yet implemented as true backend infrastructure:
 
+- Completed 1D/3D/7D/30D return windows for live articles from a real price-history provider
 - JWT authentication
 - Node/Express REST API
 - PostgreSQL database

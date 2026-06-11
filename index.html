@@ -67,7 +67,9 @@
               <button class="segment" data-window="7d" type="button">7D</button>
               <button class="segment" data-window="30d" type="button">30D</button>
             </div>
+            <button id="refreshNewsButton" class="export-button" type="button" title="Refresh latest stock news">Refresh News</button>
             <button id="exportButton" class="export-button" type="button" title="Export selected analysis">Export</button>
+            <span id="liveStatus" class="live-status">Live refresh idle</span>
           </div>
         </header>
 
@@ -163,6 +165,7 @@
               </div>
               <div id="chartSignalNote" class="chart-signal-note">Previous signal context appears here after selecting a later market event.</div>
               <canvas id="priceChart" width="1180" height="560" aria-label="Price chart with market news markers"></canvas>
+              <div id="chartTooltip" class="chart-tooltip" hidden></div>
             </div>
 
             <aside class="detail-panel" aria-label="Selected news event">
@@ -401,6 +404,6 @@
       </article>
     </div>
 
-    <script src="src/app.js?v=4"></script>
+    <script src="src/app.js?v=5"></script>
   </body>
 </html>
