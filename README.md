@@ -9,14 +9,16 @@ The app lets you choose a ticker, inspect a historical price chart, overlay news
 This project has no build step.
 
 ```bash
-python3 -m http.server 4173
+python3 -m http.server 4182
 ```
 
-Then open:
+Then open the matching local URL:
 
 ```text
-http://127.0.0.1:4173/
+http://127.0.0.1:4182/
 ```
+
+Any free port works; use a different number if `4182` is already occupied.
 
 ## Current Features
 
