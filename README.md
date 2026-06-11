@@ -109,8 +109,9 @@ The API uses mock provider adapters by default, so the app runs without paid dat
 
 - Ticker dashboard for NVDA, AAPL, TSLA, and JPM.
 - Price and volume chart with clickable news event markers.
-- Professional OHLC candlestick chart with exact open, high, low, close, volume, range, 20-period moving average, and news signal markers.
+- Professional OHLC candlestick chart with exact open, high, low, close, volume, range, moving average, active-window zooming, and news signal markers.
 - Event impact windows for 1D, 3D, 7D, and 30D returns.
+- Return-window controls resize the chart to the selected post-news reaction window and filter chart/timeline signals to that same period.
 - Sentiment, event type, surprise level, volume anomaly, and confidence signals.
 - Previous-signal analysis showing the prior event, prior return, confidence delta, and whether the new headline confirmed or reversed the earlier signal.
 - Similar-event comparison for recurring event patterns.

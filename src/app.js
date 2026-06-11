@@ -261,6 +261,12 @@ const alertRules = [
 ];
 
 const LIVE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const WINDOW_CONFIG = {
+  "1d": { sessions: 1, context: 2, label: "1D" },
+  "3d": { sessions: 3, context: 3, label: "3D" },
+  "7d": { sessions: 7, context: 4, label: "7D" },
+  "30d": { sessions: 30, context: 8, label: "30D" }
+};
 
 const economicEvents = [
   {
@@ -376,7 +382,8 @@ const state = {
   liveStatus: "Live refresh idle",
   lastRefreshAt: null,
   refreshInFlight: false,
-  chartMeta: null
+  chartMeta: null,
+  windowEvents: []
 };
 
 const els = {
@@ -1281,6 +1288,45 @@ function matchEventToPoint(points, eventDate) {
   }, points[0]);
 }
 
+function getWindowConfig() {
+  return WINDOW_CONFIG[state.selectedWindow] || WINDOW_CONFIG["1d"];
+}
+
+function eventPointIndex(points, event) {
+  const point = matchEventToPoint(points, event.date);
+  return Math.max(0, points.indexOf(point));
+}
+
+function getChartWindow(points, selectedEvent) {
+  const config = getWindowConfig();
+  const selectedIndex = eventPointIndex(points, selectedEvent);
+  const startIndex = Math.max(0, selectedIndex - config.context);
+  const endIndex = Math.min(points.length - 1, selectedIndex + config.sessions);
+  const visiblePoints = points.slice(startIndex, endIndex + 1);
+  return {
+    ...config,
+    startIndex,
+    endIndex,
+    selectedIndex,
+    points: visiblePoints
+  };
+}
+
+function getWindowEvents(events, allPoints, windowInfo, selectedEvent) {
+  return events
+    .filter((event) => {
+      const index = eventPointIndex(allPoints, event);
+      return event.id === selectedEvent.id || (index >= windowInfo.startIndex && index <= windowInfo.endIndex);
+    })
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function getCurrentWindowEvents(stock, events, selectedEvent) {
+  const allPoints = createPriceSeries(stock);
+  const windowInfo = getChartWindow(allPoints, selectedEvent);
+  return getWindowEvents(events, allPoints, windowInfo, selectedEvent);
+}
+
 function renderQuoteStrip(point) {
   const rangePct = ((point.high - point.low) / point.open) * 100;
   els.quoteOpen.textContent = formatMoney(point.open);
@@ -1341,8 +1387,13 @@ function drawChart(stock, events) {
   canvas.height = Math.floor(cssHeight * pixelRatio);
   ctx.scale(pixelRatio, pixelRatio);
 
-  const points = createPriceSeries(stock);
+  const allPoints = createPriceSeries(stock);
+  const selectedEvent = getSelectedEvent(stock);
+  const windowInfo = getChartWindow(allPoints, selectedEvent);
+  const points = windowInfo.points;
+  const windowEvents = getWindowEvents(events, allPoints, windowInfo, selectedEvent);
   state.points = points;
+  state.windowEvents = windowEvents;
 
   const pad = { top: 24, right: 74, bottom: 72, left: 18 };
   const chartWidth = cssWidth - pad.left - pad.right;
@@ -1355,7 +1406,7 @@ function drawChart(stock, events) {
   const maxPrice = Math.max(...highs) * 1.008;
   const maxVolume = Math.max(...points.map((point) => point.volume));
 
-  const xFor = (index) => pad.left + (index / (points.length - 1)) * chartWidth;
+  const xFor = (index) => pad.left + (index / Math.max(1, points.length - 1)) * chartWidth;
   const yFor = (price) => pad.top + (1 - (price - minPrice) / (maxPrice - minPrice)) * priceHeight;
   const volumeY = volumeTop + volumeHeight;
   const candleWidth = Math.max(2, Math.min(7, (chartWidth / points.length) * 0.62));
@@ -1422,13 +1473,14 @@ function drawChart(stock, events) {
   ctx.lineWidth = 1.8;
   ctx.stroke();
 
+  const tickEvery = Math.max(1, Math.ceil(points.length / 5));
   points.forEach((point, index) => {
-    if (index % 22 !== 0) return;
+    if (index % tickEvery !== 0 && index !== points.length - 1) return;
     ctx.fillStyle = "#64748b";
     ctx.fillText(point.date.slice(5), xFor(index) - 13, cssHeight - 20);
   });
 
-  const markers = events.map((event) => {
+  const markers = windowEvents.map((event) => {
     const point = matchEventToPoint(points, event.date);
     const index = points.indexOf(point);
     const x = xFor(index);
@@ -1466,9 +1518,12 @@ function drawChart(stock, events) {
     ctx.stroke();
   });
 
-  const selectedEvent = getSelectedEvent(stock);
   const selectedPoint = matchEventToPoint(points, selectedEvent.date);
   renderQuoteStrip(selectedPoint);
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  els.selectedDate.textContent = `${dateLabel(firstPoint.date)} - ${dateLabel(lastPoint.date)}`;
+  els.chartSubtitle.textContent = `${getWindowConfig().label} reaction window for ${selectedEvent.type.toLowerCase()} news. Chart shows ${dateLabel(firstPoint.date)} through ${dateLabel(lastPoint.date)} and only plots news signals inside this active window.`;
 
   ctx.fillStyle = "#14213d";
   ctx.font = "700 12px Inter, system-ui, sans-serif";
@@ -1548,7 +1603,7 @@ function renderEventDetail(selected) {
 }
 
 function renderEvents(events) {
-  els.eventCount.textContent = `${events.length} event${events.length === 1 ? "" : "s"}`;
+  els.eventCount.textContent = `${events.length} ${getWindowConfig().label} signal${events.length === 1 ? "" : "s"}`;
   els.eventList.innerHTML = "";
 
   events.forEach((event) => {
@@ -1633,7 +1688,7 @@ function resolveChartHover(event) {
   const mouseX = event.clientX - rect.left;
   const mouseY = event.clientY - rect.top;
   const { pad, chartWidth, points, markers } = state.chartMeta;
-  const rawIndex = Math.round(((mouseX - pad.left) / chartWidth) * (points.length - 1));
+  const rawIndex = Math.round(((mouseX - pad.left) / chartWidth) * Math.max(1, points.length - 1));
   const pointIndex = Math.max(0, Math.min(points.length - 1, rawIndex));
   const point = points[pointIndex];
   const nearestMarker = markers
@@ -1692,7 +1747,9 @@ function hideChartTooltip() {
   const points = state.points.length ? state.points : createPriceSeries(stock);
   const selectedPoint = matchEventToPoint(points, selectedEvent.date);
   renderQuoteStrip(selectedPoint);
-  els.selectedDate.textContent = dateLabel(selectedEvent.date);
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  els.selectedDate.textContent = firstPoint && lastPoint ? `${dateLabel(firstPoint.date)} - ${dateLabel(lastPoint.date)}` : dateLabel(selectedEvent.date);
 }
 
 function handleCanvasClick(event) {
@@ -1712,6 +1769,7 @@ function render() {
 
   const selected = getSelectedEvent(stock);
   const similar = findSimilarEvents(selected);
+  const windowEvents = getCurrentWindowEvents(stock, events, selected);
 
   renderProductNavigation();
   populateStaticSelects();
@@ -1722,7 +1780,7 @@ function render() {
   }
   renderEventDetail(selected);
   renderPreviousSignal(stock, selected);
-  renderEvents(events);
+  renderEvents(windowEvents);
   renderSimilarEvents(selected, similar);
   renderDashboardSystem();
   renderNewsFeed();
