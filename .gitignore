@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+.DS_Store
+coverage/
+*.log
+apps/api/prisma/dev.db
+apps/api/generated/
+apps/api/prisma/*.js
+apps/api/tests/*.js
+packages/shared/src/*.js

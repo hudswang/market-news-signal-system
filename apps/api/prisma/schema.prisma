@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  watchlists   Watchlist[]
+  alertRules   AlertRule[]
+}
+
+model Ticker {
+  id        String              @id @default(cuid())
+  symbol    String              @unique
+  companyName String
+  sector    String
+  mentions  NewsTickerMention[]
+  filings   Filing[]
+}
+
+model NewsSource {
+  id               String        @id @default(cuid())
+  name             String        @unique
+  category         String
+  reliabilityScore Int
+  enabled          Boolean       @default(true)
+  articles         NewsArticle[]
+}
+
+model NewsArticle {
+  id                   String              @id @default(cuid())
+  title                String
+  sourceUrl            String
+  publishedAt          DateTime
+  summary              String
+  aiBullets            String[]
+  whyItMatters         String
+  possibleMarketImpact String
+  sentimentLabel       String
+  sentimentScore       Float
+  category             String
+  impactLevel          String
+  sourceId             String
+  source               NewsSource          @relation(fields: [sourceId], references: [id])
+  mentions             NewsTickerMention[]
+  alertEvents          AlertEvent[]
+  createdAt            DateTime            @default(now())
+}
+
+model NewsTickerMention {
+  id        String      @id @default(cuid())
+  articleId String
+  tickerId  String
+  article   NewsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  ticker    Ticker      @relation(fields: [tickerId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, tickerId])
+}
+
+model Watchlist {
+  id        String            @id @default(cuid())
+  name      String
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickers   WatchlistTicker[]
+  createdAt DateTime          @default(now())
+}
+
+model WatchlistTicker {
+  id          String    @id @default(cuid())
+  watchlistId String
+  symbol      String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+
+  @@unique([watchlistId, symbol])
+}
+
+model AlertRule {
+  id        String      @id @default(cuid())
+  userId    String
+  ticker    String
+  type      String
+  threshold Int
+  active    Boolean     @default(true)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events    AlertEvent[]
+  createdAt DateTime    @default(now())
+}
+
+model AlertEvent {
+  id          String       @id @default(cuid())
+  ruleId      String
+  articleId   String?
+  message     String
+  triggeredAt DateTime     @default(now())
+  rule        AlertRule    @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  article     NewsArticle? @relation(fields: [articleId], references: [id])
+}
+
+model EconomicEvent {
+  id            String   @id @default(cuid())
+  eventName     String
+  country       String
+  scheduledAt   DateTime
+  importance    String
+  relatedAssets String[]
+  actualValue   String?
+  forecastValue String?
+  previousValue String?
+}
+
+model Filing {
+  id          String   @id @default(cuid())
+  filingType  String
+  companyName String
+  tickerId    String
+  ticker      Ticker   @relation(fields: [tickerId], references: [id])
+  filedAt     DateTime
+  url         String
+  summary     String
+}

@@ -6,7 +6,7 @@ The app lets you choose a ticker, inspect a historical price chart, overlay news
 
 ## Run Locally
 
-This project has no build step.
+The original static preview has no build step.
 
 ```bash
 python3 -m http.server 4182
@@ -19,6 +19,79 @@ http://127.0.0.1:4182/
 ```
 
 Any free port works; use a different number if `4182` is already occupied.
+
+## Full-Stack App
+
+The repo now also includes the requested production-oriented monorepo scaffold:
+
+```text
+apps/api        Node.js + Express + TypeScript API
+apps/web        React + TypeScript + Tailwind frontend
+packages/shared Shared API response types and domain models
+infra           PostgreSQL and Redis Docker Compose
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start PostgreSQL and Redis:
+
+```bash
+docker compose -f infra/docker-compose.yml up -d
+```
+
+Set up the database:
+
+```bash
+cp .env.example .env
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+```
+
+Run the API:
+
+```bash
+npm run dev
+```
+
+Run the React app:
+
+```bash
+npm run dev:web
+```
+
+Demo credentials:
+
+```text
+demo@market.local
+password123
+```
+
+The API uses mock provider adapters by default, so the app runs without paid data APIs. Real providers can be plugged into the provider interfaces under `apps/api/src/providers`.
+
+## API Surface
+
+- `POST /api/auth/signup`
+- `POST /api/auth/login`
+- `GET /api/auth/profile`
+- `GET /api/users/me`
+- `GET /api/news`
+- `GET /api/tickers`
+- `GET /api/watchlists`
+- `POST /api/watchlists`
+- `POST /api/watchlists/:id/tickers`
+- `DELETE /api/watchlists/:id/tickers/:ticker`
+- `GET /api/alerts`
+- `POST /api/alerts`
+- `GET /api/alerts/events`
+- `GET /api/dashboard`
+- `GET /api/economic-calendar`
+- `GET /api/filings`
+- `GET /api/sources`
 
 ## Current Features
 
