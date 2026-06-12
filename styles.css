@@ -957,6 +957,15 @@ select {
   background: #eef5ff;
 }
 
+.event-button.is-out-window {
+  opacity: 0.68;
+}
+
+.event-button.is-out-window:hover,
+.event-button.is-out-window.is-active {
+  opacity: 1;
+}
+
 .event-date {
   color: var(--muted);
   font-size: 12px;

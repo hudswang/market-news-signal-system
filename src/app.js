@@ -1612,20 +1612,22 @@ function renderEventDetail(selected) {
   });
 }
 
-function renderEvents(events) {
-  els.eventCount.textContent = `${events.length} ${getWindowConfig().label} signal${events.length === 1 ? "" : "s"}`;
+function renderEvents(events, windowEvents) {
+  const windowIds = new Set(windowEvents.map((event) => event.id));
+  els.eventCount.textContent = `${windowEvents.length} in ${getWindowConfig().label} window / ${events.length} total signals`;
   els.eventList.innerHTML = "";
 
   events.forEach((event) => {
     const value = event.returns[state.selectedWindow];
+    const isInWindow = windowIds.has(event.id);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `event-button ${event.id === state.selectedEventId ? "is-active" : ""}`;
+    button.className = `event-button ${event.id === state.selectedEventId ? "is-active" : ""} ${isInWindow ? "is-in-window" : "is-out-window"}`;
     button.innerHTML = `
       <span class="event-date">${dateLabel(event.date)}</span>
       <span>
         <span class="event-headline">${event.headline}</span>
-        <span class="event-meta">${event.type} - ${event.sentiment} - ${event.volumeAnomaly.toFixed(1)}x volume</span>
+        <span class="event-meta">${event.type} - ${event.sentiment} - ${event.volumeAnomaly.toFixed(1)}x volume - ${isInWindow ? `inside ${getWindowConfig().label} window` : `outside ${getWindowConfig().label} window`}</span>
       </span>
       <span class="return-value ${sentimentClass(value)}">${percent(value)}</span>
     `;
@@ -1790,7 +1792,7 @@ function render() {
   }
   renderEventDetail(selected);
   renderPreviousSignal(stock, selected);
-  renderEvents(windowEvents);
+  renderEvents(events, windowEvents);
   renderSimilarEvents(selected, similar);
   renderDashboardSystem();
   renderNewsFeed();
