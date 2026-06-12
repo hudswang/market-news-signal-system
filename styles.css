@@ -614,6 +614,7 @@ select {
 
 .news-card:focus-visible,
 .mini-item[role="button"]:focus-visible,
+.similar-item[role="button"]:focus-visible,
 .event-button:focus-visible,
 .modal-close-button:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.28);
@@ -1001,6 +1002,15 @@ select {
 
 .similar-item {
   padding: 12px;
+}
+
+.similar-item[role="button"] {
+  cursor: pointer;
+}
+
+.similar-item[role="button"]:hover {
+  border-color: var(--blue);
+  background: #eef5ff;
 }
 
 .similar-item h4 {

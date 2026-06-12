@@ -483,6 +483,26 @@ function getEvents(stock = getStock()) {
   });
 }
 
+function sortEventsByDate(events) {
+  return [...events].sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function getVisibleEventsWithSelection(stock) {
+  const events = getEvents(stock);
+  const selected = stock.events.find((event) => event.id === state.selectedEventId);
+
+  if (!selected) {
+    state.selectedEventId = events[0]?.id || stock.events[0].id;
+    return events;
+  }
+
+  if (events.some((event) => event.id === selected.id)) {
+    return events;
+  }
+
+  return sortEventsByDate([...events, selected]);
+}
+
 function getSelectedEvent(stock = getStock()) {
   return stock.events.find((event) => event.id === state.selectedEventId) || stock.events[0];
 }
@@ -758,6 +778,19 @@ function findArticleForEvent(event) {
   return getAllArticles().find((article) => article.id === `article-${event.id}`);
 }
 
+function focusSignal(symbol, eventId) {
+  state.selectedSymbol = symbol;
+  state.selectedEventId = eventId;
+  render();
+}
+
+function focusArticleSignal(article) {
+  const { stock, event } = findArticleContext(article);
+  if (stock) state.selectedSymbol = stock.symbol;
+  if (event) state.selectedEventId = event.id;
+  render();
+}
+
 function renderReturnRows(returns) {
   return Object.entries(returns)
     .map(
@@ -929,10 +962,14 @@ function makeArticleOpenable(element, article) {
   element.tabIndex = 0;
   element.setAttribute("role", "button");
   element.setAttribute("aria-label", `Open news detail: ${article.title}`);
-  element.addEventListener("click", () => openNewsModal(article));
+  element.addEventListener("click", () => {
+    focusArticleSignal(article);
+    openNewsModal(article);
+  });
   element.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
+      focusArticleSignal(article);
       openNewsModal(article);
     }
   });
@@ -1666,6 +1703,9 @@ function renderSimilarEvents(selected, similar) {
     const item = document.createElement("article");
     const value = event.returns[state.selectedWindow];
     item.className = "similar-item";
+    item.tabIndex = 0;
+    item.setAttribute("role", "button");
+    item.setAttribute("aria-label", `Focus signal: ${event.symbol} ${event.headline}`);
     item.innerHTML = `
       <h4>${event.symbol} - ${event.headline}</h4>
       <p>${dateLabel(event.date)} - ${event.source}</p>
@@ -1674,6 +1714,13 @@ function renderSimilarEvents(selected, similar) {
         <strong class="${sentimentClass(value)}">${percent(value)}</strong>
       </div>
     `;
+    item.addEventListener("click", () => focusSignal(event.symbol, event.id));
+    item.addEventListener("keydown", (keyboardEvent) => {
+      if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
+        keyboardEvent.preventDefault();
+        focusSignal(event.symbol, event.id);
+      }
+    });
     els.similarEvents.appendChild(item);
   });
 }
@@ -1774,10 +1821,7 @@ function handleCanvasClick(event) {
 
 function render() {
   const stock = getStock();
-  let events = getEvents(stock);
-  if (!events.some((event) => event.id === state.selectedEventId)) {
-    state.selectedEventId = events[0]?.id || stock.events[0].id;
-  }
+  const events = getVisibleEventsWithSelection(stock);
 
   const selected = getSelectedEvent(stock);
   const similar = findSimilarEvents(selected);
