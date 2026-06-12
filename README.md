@@ -2,7 +2,7 @@
 
 A personal research product for studying how specific stocks reacted around news events and prior signals.
 
-The app lets you choose a ticker, inspect a professional close-price line chart, overlay news markers, compare previous signals, and review post-news return windows such as 1 day, 3 days, 7 days, and 30 days. It uses realistic sample data and intentionally describes results as associated reactions rather than guaranteed causation.
+The app lets you choose a ticker, inspect a professional close-price line chart, overlay news markers, compare previous signals, and review post-news return windows such as 1 day, 1 week, 1 month, 3 months, and 1 year. It uses realistic sample data and intentionally describes results as associated reactions rather than guaranteed causation.
 
 ## Run Locally
 
@@ -110,15 +110,16 @@ The API uses mock provider adapters by default, so the app runs without paid dat
 - Ticker dashboard for NVDA, AAPL, TSLA, and JPM.
 - Price and volume chart with clickable news event markers.
 - Professional close-price line chart with exact open, high, low, close, volume, range, active-window zooming, and news signal markers.
-- Event impact windows for 1D, 3D, 7D, and 30D returns.
+- Event impact windows for 1D, 1W, 1M, 3M, and 1Y returns.
 - Return-window controls resize the chart to the selected post-news reaction window and filter chart/timeline signals to that same period.
+- Chart zoom controls let users zoom in, zoom out, or reset the visible window without changing the selected signal.
 - Sentiment, event type, surprise level, volume anomaly, and confidence signals.
 - Previous-signal analysis showing the prior event, prior return, confidence delta, and whether the new headline confirmed or reversed the earlier signal.
 - Similar-event comparison for recurring event patterns.
 - Dense desktop layout with responsive mobile behavior.
 - Multi-view stock-impact interface with Impact Dashboard, Signal Feed, Watchlists, Alerts, Economic Calendar, SEC Filings, and Sources/Admin pages.
 - Mock market news feed with article cards, source, URL, published time, tickers, AI-style bullets, summary, sentiment score, category, impact level, why-it-matters, and possible-impact fields.
-- Clickable news detail drawer for opening a full impact brief with AI summary bullets, signal telemetry, prior-signal comparison, and 1D/3D/7D/30D reaction table.
+- Clickable news detail drawer for opening a full impact brief with AI summary bullets, signal telemetry, prior-signal comparison, and 1D/1W/1M/3M/1Y reaction table.
 - Live news refresh button and five-minute background polling through the local server, using public GDELT article search with a Google News RSS fallback, merged into the stock signal feed as live impact candidates.
 - Professional chart hover tooltip that updates OHLC values and shows the news signal linked to hovered price markers.
 - Search and filters for ticker, source, category, and sentiment.
@@ -148,7 +149,7 @@ Covered in this static MVP:
 
 Not yet implemented as true backend infrastructure:
 
-- Completed 1D/3D/7D/30D return windows for live articles from a real price-history provider
+- Completed 1D/1W/1M/3M/1Y return windows for live articles from a real price-history provider
 - JWT authentication
 - Node/Express REST API
 - PostgreSQL database

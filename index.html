@@ -63,9 +63,10 @@
             <input id="globalSearch" class="top-search" type="search" placeholder="Search news, ticker, source" />
             <div class="segmented" role="group" aria-label="Return window">
               <button class="segment is-active" data-window="1d" type="button">1D</button>
-              <button class="segment" data-window="3d" type="button">3D</button>
-              <button class="segment" data-window="7d" type="button">7D</button>
-              <button class="segment" data-window="30d" type="button">30D</button>
+              <button class="segment" data-window="1w" type="button">1W</button>
+              <button class="segment" data-window="1m" type="button">1M</button>
+              <button class="segment" data-window="3m" type="button">3M</button>
+              <button class="segment" data-window="1y" type="button">1Y</button>
             </div>
             <button id="refreshNewsButton" class="export-button" type="button" title="Refresh latest stock news">Refresh News</button>
             <button id="exportButton" class="export-button" type="button" title="Export selected analysis">Export</button>
@@ -135,7 +136,13 @@
                   <h3>Professional Price Action</h3>
                   <p id="chartSubtitle">Line chart shows close price, volume context, and news signal markers.</p>
                 </div>
-                <span id="selectedDate" class="date-pill">Date</span>
+                <div class="chart-toolbar" aria-label="Chart zoom controls">
+                  <button id="chartZoomOut" class="chart-tool-button" type="button" title="Zoom out">-</button>
+                  <span id="chartZoomLabel" class="zoom-pill">1.0x</span>
+                  <button id="chartZoomIn" class="chart-tool-button" type="button" title="Zoom in">+</button>
+                  <button id="chartZoomReset" class="chart-tool-button reset" type="button" title="Reset chart zoom">Reset</button>
+                  <span id="selectedDate" class="date-pill">Date</span>
+                </div>
               </div>
               <div class="quote-strip" aria-label="Selected price point market data">
                 <div>
@@ -404,6 +411,6 @@
       </article>
     </div>
 
-    <script src="src/app.js?v=10"></script>
+    <script src="src/app.js?v=11"></script>
   </body>
 </html>

@@ -266,7 +266,7 @@ select {
 
 .segmented {
   display: grid;
-  grid-template-columns: repeat(4, 52px);
+  grid-template-columns: repeat(5, 52px);
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
@@ -309,6 +309,54 @@ select {
 .export-button:disabled {
   cursor: progress;
   opacity: 0.72;
+}
+
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chart-tool-button {
+  min-width: 34px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.chart-tool-button.reset {
+  padding: 0 10px;
+}
+
+.chart-tool-button:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.chart-tool-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.zoom-pill {
+  height: 32px;
+  min-width: 82px;
+  border: 1px solid var(--soft-line);
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .live-status {

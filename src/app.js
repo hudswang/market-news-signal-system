@@ -289,7 +289,7 @@ const supplementalSignals = {
       source: "Earnings Call",
       headline: "Gross-margin commentary kept investors focused on premium AI chip mix",
       summary:
-        "A deeper read of the earnings transcript emphasized mix and pricing power. The signal helped explain why the 7D window held more strength than the first-day move alone.",
+        "A deeper read of the earnings transcript emphasized mix and pricing power. The signal helped explain why the 1W window held more strength than the first-day move alone.",
       type: "Earnings",
       sentiment: "Positive",
       surprise: "Medium positive",
@@ -304,7 +304,7 @@ const supplementalSignals = {
       source: "Product Desk",
       headline: "Competitor accelerator launch raised questions about future pricing power",
       summary:
-        "The market treated the competing product as a medium-term risk rather than an immediate demand shock. It mattered more in the 30D read than the first reaction week.",
+        "The market treated the competing product as a medium-term risk rather than an immediate demand shock. It mattered more in the 1M read than the first reaction week.",
       type: "Product",
       sentiment: "Negative",
       surprise: "Medium negative",
@@ -319,7 +319,7 @@ const supplementalSignals = {
       source: "Market Structure",
       headline: "Mega-cap growth rebalance flow created short-term pressure after rally",
       summary:
-        "Positioning and index-flow headlines created a later-window drag. This signal shows why 30D performance can differ from the clean post-earnings reaction.",
+        "Positioning and index-flow headlines created a later-window drag. This signal shows why 1M performance can differ from the clean post-earnings reaction.",
       type: "Macro",
       sentiment: "Neutral",
       surprise: "Low",
@@ -522,6 +522,33 @@ stocks.forEach((stock) => {
   stock.events.sort((a, b) => new Date(a.date) - new Date(b.date));
 });
 
+function scaledReturn(value, multiplier) {
+  return Number((value * multiplier).toFixed(1));
+}
+
+function expandReturnWindows(returns) {
+  const oneDay = returns["1d"] ?? 0;
+  const oneWeek = returns["1w"] ?? returns["7d"] ?? returns["3d"] ?? oneDay;
+  const oneMonth = returns["1m"] ?? returns["30d"] ?? oneWeek;
+  const continuation = Math.abs(oneMonth) >= 8 ? 1.14 : 1.28;
+  const longRun = Math.abs(oneMonth) >= 8 ? 1.42 : 1.76;
+
+  return {
+    ...returns,
+    "1d": oneDay,
+    "1w": oneWeek,
+    "1m": oneMonth,
+    "3m": returns["3m"] ?? scaledReturn(oneMonth, continuation),
+    "1y": returns["1y"] ?? scaledReturn(oneMonth, longRun)
+  };
+}
+
+stocks.forEach((stock) => {
+  stock.events.forEach((event) => {
+    event.returns = expandReturnWindows(event.returns);
+  });
+});
+
 const newsSources = [
   { name: "Earnings Call", category: "Company", reliability: 92, enabled: true },
   { name: "Policy Wire", category: "Macro/Policy", reliability: 84, enabled: true },
@@ -547,11 +574,14 @@ const alertRules = [
 ];
 
 const LIVE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const RETURN_WINDOWS = ["1d", "1w", "1m", "3m", "1y"];
+const CHART_ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4];
 const WINDOW_CONFIG = {
   "1d": { sessions: 1, context: 2, label: "1D" },
-  "3d": { sessions: 3, context: 3, label: "3D" },
-  "7d": { sessions: 7, context: 4, label: "7D" },
-  "30d": { sessions: 30, context: 8, label: "30D" }
+  "1w": { sessions: 5, context: 3, label: "1W" },
+  "1m": { sessions: 21, context: 6, label: "1M" },
+  "3m": { sessions: 63, context: 14, label: "3M" },
+  "1y": { sessions: 252, context: 28, label: "1Y" }
 };
 
 const economicEvents = [
@@ -654,6 +684,7 @@ const state = {
   selectedSymbol: "NVDA",
   selectedEventId: "nvda-earnings-beat",
   selectedWindow: "1d",
+  chartZoom: 1,
   filterType: "All",
   bullishOnly: false,
   points: [],
@@ -688,6 +719,10 @@ const els = {
   similarSummary: document.querySelector("#similarSummary"),
   chartSubtitle: document.querySelector("#chartSubtitle"),
   selectedDate: document.querySelector("#selectedDate"),
+  chartZoomOut: document.querySelector("#chartZoomOut"),
+  chartZoomIn: document.querySelector("#chartZoomIn"),
+  chartZoomReset: document.querySelector("#chartZoomReset"),
+  chartZoomLabel: document.querySelector("#chartZoomLabel"),
   quoteOpen: document.querySelector("#quoteOpen"),
   quoteHigh: document.querySelector("#quoteHigh"),
   quoteLow: document.querySelector("#quoteLow"),
@@ -796,6 +831,15 @@ function getSelectedEvent(stock = getStock()) {
 function percent(value) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(1)}%`;
+}
+
+function returnFor(item, windowKey = state.selectedWindow) {
+  const returns = item?.returns || {};
+  return returns[windowKey] ?? returns["1m"] ?? returns["30d"] ?? returns["1w"] ?? returns["7d"] ?? returns["1d"] ?? 0;
+}
+
+function windowLabel(windowKey = state.selectedWindow) {
+  return WINDOW_CONFIG[windowKey]?.label || windowKey.toUpperCase();
 }
 
 function sentimentClass(value) {
@@ -917,13 +961,13 @@ function normalizeLiveArticle(stock, item) {
     impactLevel,
     whyItMatters: `This live article matters because ${stock.symbol} is currently analyzed around ${stock.regime.toLowerCase()}.`,
     possibleImpact:
-      "Live article queued for impact analysis. Completed 1D, 3D, 7D, and 30D reactions require price data after the article timestamp.",
+      "Live article queued for impact analysis. Completed 1D, 1W, 1M, 3M, and 1Y reactions require price data after the article timestamp.",
     bullets: [
       `Live source matched this article to ${stock.symbol} from ${item.domain || "GDELT"}.`,
       `Signal classifier tagged it as ${sentiment.label.toLowerCase()} ${category.toLowerCase()} news with ${confidence}/100 confidence.`,
       "Impact windows are pending until the app observes post-news price data."
     ],
-    returns: { "1d": 0, "3d": 0, "7d": 0, "30d": 0 },
+    returns: { "1d": 0, "1w": 0, "1m": 0, "3m": 0, "1y": 0 },
     confidence,
     volumeAnomaly: 1 + absoluteScore,
     isLive: true
@@ -998,7 +1042,7 @@ function getAllArticles() {
         category: event.type,
         impactLevel: event.confidence >= 80 || event.volumeAnomaly >= 2.2 ? "High" : event.confidence >= 65 ? "Medium" : "Low",
         whyItMatters: `This matters because ${stock.symbol} is currently trading around ${stock.regime.toLowerCase()}.`,
-        possibleImpact: `Associated ${state.selectedWindow.toUpperCase()} reaction in the sample: ${percent(event.returns[state.selectedWindow])}. Treat this as correlation research, not causation.`,
+        possibleImpact: `Associated ${windowLabel()} reaction in the sample: ${percent(returnFor(event))}. Treat this as correlation research, not causation.`,
         bullets: [
           event.summary,
           `Sentiment analyzer classified this as ${event.sentiment.toLowerCase()} with a score of ${event.sentiment === "Positive" ? "+" : ""}${(event.sentiment === "Negative" ? -event.confidence / 100 : event.confidence / 100).toFixed(2)}.`,
@@ -1078,14 +1122,17 @@ function focusArticleSignal(article) {
 }
 
 function renderReturnRows(returns) {
-  return Object.entries(returns)
+  return RETURN_WINDOWS
     .map(
-      ([windowLabel, value]) => `
+      (windowKey) => {
+        const value = returnFor({ returns }, windowKey);
+        return `
         <tr>
-          <td>${windowLabel.toUpperCase()}</td>
+          <td>${windowLabel(windowKey)}</td>
           <td class="${sentimentClass(value)}">${percent(value)}</td>
         </tr>
-      `
+      `;
+      }
     )
     .join("");
 }
@@ -1094,7 +1141,7 @@ function renderArticleReturnRows(article) {
   if (article.isLive) {
     return `
       <tr>
-        <td>1D/3D/7D/30D</td>
+        <td>${RETURN_WINDOWS.map((windowKey) => windowLabel(windowKey)).join("/")}</td>
         <td>Pending price observation</td>
       </tr>
     `;
@@ -1122,8 +1169,8 @@ function renderPreviousSignalBrief(stock, event) {
     `;
   }
 
-  const previousReturn = previous.returns[state.selectedWindow];
-  const currentReturn = event.returns[state.selectedWindow];
+  const previousReturn = returnFor(previous);
+  const currentReturn = returnFor(event);
   const sameDirection = (previousReturn >= 0 && currentReturn >= 0) || (previousReturn < 0 && currentReturn < 0);
   const relationship = sameDirection ? "Confirmed the prior signal" : "Reversed the prior signal";
   return `
@@ -1135,11 +1182,11 @@ function renderPreviousSignalBrief(stock, event) {
       <p><strong>${dateLabel(previous.date)}:</strong> ${previous.headline}</p>
       <div class="modal-stat-grid three-up">
         <div>
-          <span>Prior ${state.selectedWindow.toUpperCase()}</span>
+          <span>Prior ${windowLabel()}</span>
           <strong class="${sentimentClass(previousReturn)}">${percent(previousReturn)}</strong>
         </div>
         <div>
-          <span>Current ${state.selectedWindow.toUpperCase()}</span>
+          <span>Current ${windowLabel()}</span>
           <strong class="${sentimentClass(currentReturn)}">${percent(currentReturn)}</strong>
         </div>
         <div>
@@ -1154,7 +1201,7 @@ function renderPreviousSignalBrief(stock, event) {
 
 function openNewsModal(article) {
   const { stock, event } = findArticleContext(article);
-  const currentReturn = event?.returns[state.selectedWindow] ?? article.returns[state.selectedWindow];
+  const currentReturn = event ? returnFor(event) : returnFor(article);
   const reactionText = article.isLive ? "Pending" : percent(currentReturn);
   const reactionClass = article.isLive ? "neutral" : sentimentClass(currentReturn);
 
@@ -1187,7 +1234,7 @@ function openNewsModal(article) {
           <strong>${article.volumeAnomaly.toFixed(1)}x</strong>
         </div>
         <div>
-          <span>${state.selectedWindow.toUpperCase()} Reaction</span>
+          <span>${windowLabel()} Reaction</span>
           <strong class="${reactionClass}">${reactionText}</strong>
         </div>
         <div>
@@ -1565,9 +1612,26 @@ function movingAverage(points, index, length) {
   return window.reduce((sum, point) => sum + point.close, 0) / window.length;
 }
 
+function chartZoomIndex() {
+  return CHART_ZOOM_LEVELS.indexOf(state.chartZoom);
+}
+
+function setChartZoom(index) {
+  const boundedIndex = Math.max(0, Math.min(CHART_ZOOM_LEVELS.length - 1, index));
+  state.chartZoom = CHART_ZOOM_LEVELS[boundedIndex];
+}
+
+function renderChartZoomControls() {
+  const zoomIndex = chartZoomIndex();
+  els.chartZoomLabel.textContent = `${state.chartZoom}x range`;
+  els.chartZoomIn.disabled = zoomIndex <= 0;
+  els.chartZoomOut.disabled = zoomIndex >= CHART_ZOOM_LEVELS.length - 1;
+  els.chartZoomReset.disabled = state.chartZoom === 1;
+}
+
 function createPriceSeries(stock) {
   const start = new Date("2025-01-01T00:00:00");
-  const end = new Date("2025-09-30T00:00:00");
+  const end = new Date("2025-12-31T00:00:00");
   const eventMap = new Map(stock.events.map((event) => [event.date, event]));
   const points = [];
   let close = stock.basePrice;
@@ -1623,11 +1687,15 @@ function eventPointIndex(points, event) {
 function getChartWindow(points, selectedEvent) {
   const config = getWindowConfig();
   const selectedIndex = eventPointIndex(points, selectedEvent);
-  const startIndex = Math.max(0, selectedIndex - config.context);
-  const endIndex = Math.min(points.length - 1, selectedIndex + config.sessions);
+  const context = Math.max(1, Math.round(config.context * state.chartZoom));
+  const sessions = Math.max(1, Math.round(config.sessions * state.chartZoom));
+  const startIndex = Math.max(0, selectedIndex - context);
+  const endIndex = Math.min(points.length - 1, selectedIndex + sessions);
   const visiblePoints = points.slice(startIndex, endIndex + 1);
   return {
     ...config,
+    context,
+    sessions,
     startIndex,
     endIndex,
     selectedIndex,
@@ -1680,8 +1748,8 @@ function renderPreviousSignal(stock, selected) {
     return;
   }
 
-  const previousReturn = previous.returns[state.selectedWindow];
-  const selectedReturn = selected.returns[state.selectedWindow];
+  const previousReturn = returnFor(previous);
+  const selectedReturn = returnFor(selected);
   const delta = selected.confidence - previous.confidence;
   const sameDirection = (previousReturn >= 0 && selectedReturn >= 0) || (previousReturn < 0 && selectedReturn < 0);
   const relationship = sameDirection ? "Confirmed" : "Reversed";
@@ -1697,7 +1765,7 @@ function renderPreviousSignal(stock, selected) {
   els.previousSignalDelta.className = sentimentClass(delta);
   els.previousSignalRelationship.textContent = relationship;
   els.previousSignalRelationship.className = sameDirection ? "positive" : "negative";
-  els.chartSignalNote.textContent = `Previous signal: ${previous.type} on ${dateLabel(previous.date)} returned ${percent(previousReturn)} over ${state.selectedWindow.toUpperCase()}. Current news ${relationship.toLowerCase()} that read with ${percent(selectedReturn)}.`;
+  els.chartSignalNote.textContent = `Previous signal: ${previous.type} on ${dateLabel(previous.date)} returned ${percent(previousReturn)} over ${windowLabel()}. Current news ${relationship.toLowerCase()} that read with ${percent(selectedReturn)}.`;
 }
 
 function drawChart(stock, events) {
@@ -1856,7 +1924,7 @@ function drawChart(stock, events) {
   const firstPoint = points[0];
   const lastPoint = points[points.length - 1];
   els.selectedDate.textContent = `${dateLabel(firstPoint.date)} - ${dateLabel(lastPoint.date)}`;
-  els.chartSubtitle.textContent = `${getWindowConfig().label} reaction window for ${selectedEvent.type.toLowerCase()} news. Chart shows ${dateLabel(firstPoint.date)} through ${dateLabel(lastPoint.date)}; markers are limited to signals inside this active window, while the timeline keeps the full signal history clickable.`;
+  els.chartSubtitle.textContent = `${getWindowConfig().label} reaction window for ${selectedEvent.type.toLowerCase()} news at ${state.chartZoom}x range. Chart shows ${dateLabel(firstPoint.date)} through ${dateLabel(lastPoint.date)}; markers are limited to signals inside this active window, while the timeline keeps the full signal history clickable.`;
 
   ctx.fillStyle = "#14213d";
   ctx.font = "700 12px Inter, system-ui, sans-serif";
@@ -1882,7 +1950,7 @@ function renderTickers() {
         <span>
           <span class="ticker-name">${stock.name}</span>
         </span>
-        <span class="ticker-change ${sentimentClass(lastEvent.returns[state.selectedWindow])}">${percent(lastEvent.returns[state.selectedWindow])}</span>
+        <span class="ticker-change ${sentimentClass(returnFor(lastEvent))}">${percent(returnFor(lastEvent))}</span>
       `;
       button.addEventListener("click", () => {
         state.selectedSymbol = stock.symbol;
@@ -1894,21 +1962,21 @@ function renderTickers() {
 }
 
 function renderMetrics(stock, selected, similar) {
-  const selectedReturn = selected.returns[state.selectedWindow];
+  const selectedReturn = returnFor(selected);
   const avgSimilar = similar.length
-    ? similar.reduce((sum, event) => sum + event.returns[state.selectedWindow], 0) / similar.length
+    ? similar.reduce((sum, event) => sum + returnFor(event), 0) / similar.length
     : selectedReturn;
 
   els.marketRegime.textContent = stock.regime;
   els.stockTitle.textContent = `${stock.symbol} - ${stock.name}`;
   els.selectedReturn.textContent = percent(selectedReturn);
   els.selectedReturn.className = sentimentClass(selectedReturn);
-  els.selectedReturnLabel.textContent = `${state.selectedWindow.toUpperCase()} associated reaction`;
+  els.selectedReturnLabel.textContent = `${windowLabel()} associated reaction`;
   els.signalStrength.textContent = `${selected.confidence}/100`;
   els.signalStrengthLabel.textContent = `${selected.sentiment} ${selected.type.toLowerCase()} signal`;
   els.volumeAnomaly.textContent = `${selected.volumeAnomaly.toFixed(1)}x`;
   els.similarCount.textContent = String(similar.length);
-  els.similarSummary.textContent = `${percent(avgSimilar)} avg ${state.selectedWindow.toUpperCase()} reaction`;
+  els.similarSummary.textContent = `${percent(avgSimilar)} avg ${windowLabel()} reaction`;
   els.similarSummary.className = sentimentClass(avgSimilar);
   els.selectedDate.textContent = dateLabel(selected.date);
 }
@@ -1925,10 +1993,11 @@ function renderEventDetail(selected) {
   els.eventRisk.textContent = selected.risk;
   els.reactionRows.innerHTML = "";
 
-  Object.entries(selected.returns).forEach(([windowLabel, value]) => {
+  RETURN_WINDOWS.forEach((windowKey) => {
+    const value = returnFor(selected, windowKey);
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td>${windowLabel.toUpperCase()}</td>
+      <td>${windowLabel(windowKey)}</td>
       <td class="${sentimentClass(value)}">${percent(value)}</td>
     `;
     els.reactionRows.appendChild(row);
@@ -1943,7 +2012,7 @@ function renderEvents(events, windowEvents) {
   els.eventList.innerHTML = "";
 
   events.forEach((event) => {
-    const value = event.returns[state.selectedWindow];
+    const value = returnFor(event);
     const isInWindow = windowIds.has(event.id);
     const button = document.createElement("button");
     button.type = "button";
@@ -1972,7 +2041,7 @@ function findSimilarEvents(selected) {
   return stocks
     .flatMap((stock) => stock.events.map((event) => ({ ...event, symbol: stock.symbol })))
     .filter((event) => event.id !== selected.id && event.type === selected.type && event.sentiment === selected.sentiment)
-    .sort((a, b) => Math.abs(b.returns[state.selectedWindow]) - Math.abs(a.returns[state.selectedWindow]));
+    .sort((a, b) => Math.abs(returnFor(b)) - Math.abs(returnFor(a)));
 }
 
 function renderSimilarEvents(selected, similar) {
@@ -1989,7 +2058,7 @@ function renderSimilarEvents(selected, similar) {
 
   similar.slice(0, 4).forEach((event) => {
     const item = document.createElement("article");
-    const value = event.returns[state.selectedWindow];
+    const value = returnFor(event);
     item.className = "similar-item";
     item.tabIndex = 0;
     item.setAttribute("role", "button");
@@ -2057,8 +2126,8 @@ function showChartTooltip(event) {
   renderQuoteStrip(point);
   els.selectedDate.textContent = dateLabel(point.date);
   const panelRect = els.priceChart.parentElement.getBoundingClientRect();
-  const returnText = signal ? percent(signal.returns[state.selectedWindow]) : "No signal";
-  const returnClass = signal ? sentimentClass(signal.returns[state.selectedWindow]) : "neutral";
+  const returnText = signal ? percent(returnFor(signal)) : "No signal";
+  const returnClass = signal ? sentimentClass(returnFor(signal)) : "neutral";
 
   els.chartTooltip.innerHTML = `
     <div class="tooltip-row">
@@ -2074,7 +2143,7 @@ function showChartTooltip(event) {
     <div class="tooltip-signal">
       <span>${signal ? `${signal.type} signal` : "No news signal"}</span>
       <strong>${signal ? signal.headline : "Hover a marker for linked news"}</strong>
-      <small>${signal ? `${signal.source} - ${signal.sentiment} - ${state.selectedWindow.toUpperCase()} ${returnText}` : "This price move has no matched article in the sample set."}</small>
+      <small>${signal ? `${signal.source} - ${signal.sentiment} - ${windowLabel()} ${returnText}` : "This price move has no matched article in the sample set."}</small>
     </div>
   `;
   els.chartTooltip.hidden = false;
@@ -2134,6 +2203,7 @@ function render() {
   renderFilings();
   renderSources();
   renderLiveStatus();
+  renderChartZoomControls();
 }
 
 els.tickerSearch.addEventListener("input", renderTickers);
@@ -2160,8 +2230,21 @@ document.querySelectorAll(".segment").forEach((button) => {
     document.querySelectorAll(".segment").forEach((segment) => segment.classList.remove("is-active"));
     button.classList.add("is-active");
     state.selectedWindow = button.dataset.window;
+    state.chartZoom = 1;
     render();
   });
+});
+els.chartZoomOut.addEventListener("click", () => {
+  setChartZoom(chartZoomIndex() + 1);
+  render();
+});
+els.chartZoomIn.addEventListener("click", () => {
+  setChartZoom(chartZoomIndex() - 1);
+  render();
+});
+els.chartZoomReset.addEventListener("click", () => {
+  state.chartZoom = 1;
+  render();
 });
 els.newsTickerFilter.addEventListener("change", (event) => {
   state.newsTicker = event.target.value;
