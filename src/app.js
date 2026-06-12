@@ -236,6 +236,292 @@ const stocks = [
   }
 ];
 
+const supplementalSignals = {
+  NVDA: [
+    {
+      id: "nvda-supply-chain-check",
+      date: "2025-02-24",
+      source: "Supply Chain Desk",
+      headline: "Server OEM checks pointed to tighter AI accelerator allocation",
+      summary:
+        "Channel checks suggested demand was still running ahead of near-term supply. The signal helped set a bullish tone into earnings, though the strongest confirmation still depended on guidance.",
+      type: "Analyst",
+      sentiment: "Positive",
+      surprise: "Medium positive",
+      confidence: 73,
+      volumeAnomaly: 1.6,
+      risk: "Pre-earnings checks can overstate demand when customers double-order capacity.",
+      returns: { "1d": 2.4, "3d": 5.8, "7d": 8.7, "30d": 13.2 }
+    },
+    {
+      id: "nvda-options-positioning",
+      date: "2025-02-25",
+      source: "Market Structure",
+      headline: "Options market priced a wider-than-usual post-earnings move",
+      summary:
+        "Implied volatility and call skew rose before the report. The setup signaled crowded optimism, which increased both upside follow-through potential and reversal risk.",
+      type: "Macro",
+      sentiment: "Neutral",
+      surprise: "Medium",
+      confidence: 62,
+      volumeAnomaly: 1.5,
+      risk: "Positioning signals can amplify volatility without changing fundamentals.",
+      returns: { "1d": 1.2, "3d": 6.5, "7d": 9.8, "30d": 14.5 }
+    },
+    {
+      id: "nvda-analyst-follow-through",
+      date: "2025-02-27",
+      source: "Analyst Desk",
+      headline: "Post-earnings estimate revisions lifted data center revenue models",
+      summary:
+        "Analysts raised forward estimates after the company update. The follow-through signal helped explain why the move extended beyond the first reaction day.",
+      type: "Analyst",
+      sentiment: "Positive",
+      surprise: "High positive",
+      confidence: 81,
+      volumeAnomaly: 2.1,
+      risk: "Estimate revisions can chase price after the initial earnings move.",
+      returns: { "1d": 3.7, "3d": 5.2, "7d": 6.4, "30d": 10.1 }
+    },
+    {
+      id: "nvda-margin-follow-through",
+      date: "2025-03-05",
+      source: "Earnings Call",
+      headline: "Gross-margin commentary kept investors focused on premium AI chip mix",
+      summary:
+        "A deeper read of the earnings transcript emphasized mix and pricing power. The signal helped explain why the 7D window held more strength than the first-day move alone.",
+      type: "Earnings",
+      sentiment: "Positive",
+      surprise: "Medium positive",
+      confidence: 72,
+      volumeAnomaly: 1.5,
+      risk: "Margin commentary can fade if supply-chain costs rise later.",
+      returns: { "1d": 1.8, "3d": 2.9, "7d": 4.8, "30d": 8.2 }
+    },
+    {
+      id: "nvda-competitor-launch",
+      date: "2025-03-20",
+      source: "Product Desk",
+      headline: "Competitor accelerator launch raised questions about future pricing power",
+      summary:
+        "The market treated the competing product as a medium-term risk rather than an immediate demand shock. It mattered more in the 30D read than the first reaction week.",
+      type: "Product",
+      sentiment: "Negative",
+      surprise: "Medium negative",
+      confidence: 64,
+      volumeAnomaly: 1.4,
+      risk: "Competitive comparisons often change after benchmark and supply data arrive.",
+      returns: { "1d": -1.6, "3d": -2.8, "7d": -1.2, "30d": 3.4 }
+    },
+    {
+      id: "nvda-fund-rebalance",
+      date: "2025-04-04",
+      source: "Market Structure",
+      headline: "Mega-cap growth rebalance flow created short-term pressure after rally",
+      summary:
+        "Positioning and index-flow headlines created a later-window drag. This signal shows why 30D performance can differ from the clean post-earnings reaction.",
+      type: "Macro",
+      sentiment: "Neutral",
+      surprise: "Low",
+      confidence: 57,
+      volumeAnomaly: 1.3,
+      risk: "Flow-driven moves may reverse once rebalancing pressure passes.",
+      returns: { "1d": -0.9, "3d": -1.4, "7d": 0.6, "30d": 2.9 }
+    },
+    {
+      id: "nvda-chip-waiver-rumor",
+      date: "2025-04-16",
+      source: "Policy Wire",
+      headline: "Potential license-waiver headlines eased part of export-control selloff",
+      summary:
+        "A follow-up policy report softened the prior negative read. The signal did not remove regulatory risk, but it changed the near-term path from panic selling to reassessment.",
+      type: "Regulatory",
+      sentiment: "Neutral",
+      surprise: "Medium",
+      confidence: 58,
+      volumeAnomaly: 1.4,
+      risk: "Policy exemptions can be narrow and reversible.",
+      returns: { "1d": 1.6, "3d": 2.8, "7d": 3.3, "30d": 5.7 }
+    },
+    {
+      id: "nvda-cloud-capex-check",
+      date: "2025-06-02",
+      source: "Cloud Capex Tracker",
+      headline: "Hyperscaler capex commentary supported another AI server buildout leg",
+      summary:
+        "Large customer spending plans improved the read-through for accelerator demand before the product roadmap update. The signal made the launch feel more commercially relevant.",
+      type: "Macro",
+      sentiment: "Positive",
+      surprise: "Medium positive",
+      confidence: 70,
+      volumeAnomaly: 1.5,
+      risk: "Cloud capex budgets can be delayed if utilization assumptions weaken.",
+      returns: { "1d": 1.5, "3d": 3.8, "7d": 6.2, "30d": 8.6 }
+    },
+    {
+      id: "nvda-supplier-capacity",
+      date: "2025-06-04",
+      source: "Supply Chain Desk",
+      headline: "Advanced packaging capacity update reduced delivery bottleneck worries",
+      summary:
+        "Supplier commentary suggested capacity constraints were easing. That supported the durability of the product-cycle signal after the roadmap announcement.",
+      type: "Product",
+      sentiment: "Positive",
+      surprise: "Low positive",
+      confidence: 67,
+      volumeAnomaly: 1.3,
+      risk: "Capacity additions can arrive later than planned.",
+      returns: { "1d": 1.1, "3d": 2.7, "7d": 4.0, "30d": 6.8 }
+    }
+  ],
+  AAPL: [
+    {
+      id: "aapl-china-channel",
+      date: "2025-01-30",
+      source: "Channel Checks",
+      headline: "China smartphone checks showed mixed premium demand into earnings",
+      summary:
+        "The pre-earnings signal was cautious on hardware volumes but constructive on mix. It helped explain why services commentary mattered more than unit noise.",
+      type: "Analyst",
+      sentiment: "Neutral",
+      surprise: "Medium",
+      confidence: 61,
+      volumeAnomaly: 1.2,
+      risk: "Regional channel checks can miss online and carrier timing effects.",
+      returns: { "1d": -0.4, "3d": 2.1, "7d": 3.0, "30d": 5.5 }
+    },
+    {
+      id: "aapl-services-note",
+      date: "2025-02-03",
+      source: "Analyst Desk",
+      headline: "Services take-rate note reinforced margin expansion thesis",
+      summary:
+        "A follow-up research note framed services growth as the cleaner driver of earnings quality. The signal supported follow-through after the earnings reaction.",
+      type: "Analyst",
+      sentiment: "Positive",
+      surprise: "Low positive",
+      confidence: 69,
+      volumeAnomaly: 1.3,
+      risk: "Services growth is sensitive to regulatory pressure on platform economics.",
+      returns: { "1d": 1.1, "3d": 2.0, "7d": 2.7, "30d": 4.8 }
+    },
+    {
+      id: "aapl-ai-developer-response",
+      date: "2025-06-11",
+      source: "Developer Conference",
+      headline: "Developer reaction to on-device AI tools improved upgrade-cycle sentiment",
+      summary:
+        "Follow-up commentary focused on integration depth and privacy positioning. The signal strengthened the product narrative after the initial announcement.",
+      type: "Product",
+      sentiment: "Positive",
+      surprise: "Medium positive",
+      confidence: 63,
+      volumeAnomaly: 1.2,
+      risk: "Developer enthusiasm may not translate into near-term device upgrades.",
+      returns: { "1d": 1.4, "3d": 2.6, "7d": 4.4, "30d": 7.2 }
+    }
+  ],
+  TSLA: [
+    {
+      id: "tsla-price-cut-readthrough",
+      date: "2025-01-06",
+      source: "Auto Pricing Desk",
+      headline: "Fresh price-cut data intensified margin concern after delivery miss",
+      summary:
+        "Pricing data made the delivery miss feel more margin-sensitive. The signal extended the negative reaction as investors lowered near-term profitability assumptions.",
+      type: "Earnings",
+      sentiment: "Negative",
+      surprise: "Medium negative",
+      confidence: 76,
+      volumeAnomaly: 2.0,
+      risk: "Price changes can be temporary incentives rather than permanent margin resets.",
+      returns: { "1d": -3.4, "3d": -5.9, "7d": -8.2, "30d": -5.4 }
+    },
+    {
+      id: "tsla-fsd-timeline",
+      date: "2025-05-09",
+      source: "Company Event",
+      headline: "Autonomy rollout timeline remained the key debate after demo",
+      summary:
+        "The market kept rewarding the autonomy story, but the signal was less clean because investors still needed proof of regulatory and commercial timing.",
+      type: "Product",
+      sentiment: "Neutral",
+      surprise: "Medium",
+      confidence: 55,
+      volumeAnomaly: 1.5,
+      risk: "Timeline uncertainty can quickly reverse narrative-led gains.",
+      returns: { "1d": 0.8, "3d": 2.2, "7d": 1.5, "30d": -0.6 }
+    },
+    {
+      id: "tsla-insurance-probe",
+      date: "2025-07-18",
+      source: "Legal Wire",
+      headline: "Insurance and liability questions widened autonomy-risk discount",
+      summary:
+        "A related legal headline extended the prior investigation signal. The market reaction focused on whether liability costs could delay software-led margin upside.",
+      type: "Legal",
+      sentiment: "Negative",
+      surprise: "Medium negative",
+      confidence: 68,
+      volumeAnomaly: 1.7,
+      risk: "Legal interpretation can shift as more facts become available.",
+      returns: { "1d": -1.9, "3d": -3.1, "7d": -1.4, "30d": 2.1 }
+    }
+  ],
+  JPM: [
+    {
+      id: "jpm-credit-card-spend",
+      date: "2025-01-16",
+      source: "Macro Desk",
+      headline: "Card-spend trends supported consumer resilience after bank earnings",
+      summary:
+        "Spending data backed the earnings call message that credit quality remained manageable. The signal helped extend bank-sector outperformance.",
+      type: "Macro",
+      sentiment: "Positive",
+      surprise: "Low positive",
+      confidence: 65,
+      volumeAnomaly: 1.2,
+      risk: "Consumer data can weaken quickly if labor-market conditions change.",
+      returns: { "1d": 0.9, "3d": 1.8, "7d": 3.3, "30d": 5.1 }
+    },
+    {
+      id: "jpm-yield-curve",
+      date: "2025-05-01",
+      source: "Rates Desk",
+      headline: "Yield-curve steepening improved large-bank net interest income read-through",
+      summary:
+        "Rates moved in a way that improved the bank earnings read-through. The signal was positive for JPM but carried macro-volatility risk for the broader tape.",
+      type: "Macro",
+      sentiment: "Positive",
+      surprise: "Medium positive",
+      confidence: 67,
+      volumeAnomaly: 1.3,
+      risk: "The rates impulse can reverse after the next inflation or jobs print.",
+      returns: { "1d": 1.0, "3d": 1.9, "7d": 2.4, "30d": 4.0 }
+    },
+    {
+      id: "jpm-buyback-plan",
+      date: "2025-06-30",
+      source: "Regulatory Release",
+      headline: "Buyback authorization details clarified capital-return upside",
+      summary:
+        "The follow-up capital plan gave investors cleaner visibility into payout timing. The signal reinforced the positive stress-test reaction.",
+      type: "Regulatory",
+      sentiment: "Positive",
+      surprise: "Medium positive",
+      confidence: 74,
+      volumeAnomaly: 1.4,
+      risk: "Management can slow buybacks if macro or credit risks rise.",
+      returns: { "1d": 1.2, "3d": 2.4, "7d": 3.6, "30d": 5.9 }
+    }
+  ]
+};
+
+stocks.forEach((stock) => {
+  stock.events.push(...(supplementalSignals[stock.symbol] || []));
+  stock.events.sort((a, b) => new Date(a.date) - new Date(b.date));
+});
+
 const newsSources = [
   { name: "Earnings Call", category: "Company", reliability: 92, enabled: true },
   { name: "Policy Wire", category: "Macro/Policy", reliability: 84, enabled: true },
@@ -1570,7 +1856,7 @@ function drawChart(stock, events) {
   const firstPoint = points[0];
   const lastPoint = points[points.length - 1];
   els.selectedDate.textContent = `${dateLabel(firstPoint.date)} - ${dateLabel(lastPoint.date)}`;
-  els.chartSubtitle.textContent = `${getWindowConfig().label} reaction window for ${selectedEvent.type.toLowerCase()} news. Chart shows ${dateLabel(firstPoint.date)} through ${dateLabel(lastPoint.date)} and only plots news signals inside this active window.`;
+  els.chartSubtitle.textContent = `${getWindowConfig().label} reaction window for ${selectedEvent.type.toLowerCase()} news. Chart shows ${dateLabel(firstPoint.date)} through ${dateLabel(lastPoint.date)}; markers are limited to signals inside this active window, while the timeline keeps the full signal history clickable.`;
 
   ctx.fillStyle = "#14213d";
   ctx.font = "700 12px Inter, system-ui, sans-serif";
@@ -1651,7 +1937,9 @@ function renderEventDetail(selected) {
 
 function renderEvents(events, windowEvents) {
   const windowIds = new Set(windowEvents.map((event) => event.id));
-  els.eventCount.textContent = `${windowEvents.length} in ${getWindowConfig().label} window / ${events.length} total signals`;
+  const activeWord = windowEvents.length === 1 ? "marker" : "markers";
+  const totalWord = events.length === 1 ? "signal" : "signals";
+  els.eventCount.textContent = `${windowEvents.length} active ${getWindowConfig().label} chart ${activeWord} / ${events.length} tracked ${totalWord}`;
   els.eventList.innerHTML = "";
 
   events.forEach((event) => {
